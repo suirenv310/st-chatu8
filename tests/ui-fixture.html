@@ -1,0 +1,8 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PixAI preset UI test</title><style>
+body{background:#151721;color:#e7e9f0;font:15px system-ui;margin:24px}#st-chatu8-tab-banana{max-width:720px;margin:auto}input,textarea,select,button{font:inherit;box-sizing:border-box;background:#242938;color:#e7e9f0;border:1px solid #47516c;border-radius:6px;padding:8px}textarea{width:100%;resize:vertical}.st-chatu8-field-col{display:flex;flex-direction:column;gap:6px;margin:12px 0}.st-chatu8-select,.st-chatu8-text-input{max-width:100%}h3{color:#8eaaff}button{cursor:pointer}p{line-height:1.5;color:#bfc5d5}[hidden]{display:none!important}
+</style><div id="st-chatu8-tab-banana"></div><script type="module">
+import {initPixaiSettings} from '../pixai.js';
+window.testSettings={mode:'banana',banana:{},pixai:{enabled:false,apiKey:'test-only'}};
+window.saves=0;
+initPixaiSettings({getSettings:()=>window.testSettings,save:()=>window.saves++});
+</script></html>

@@ -1,3 +1,13 @@
+# st-chatu8 — PixAI / English fork
+
+**Patch v0.5.0**, based on upstream 3.1.8. Includes the English UI, PixAI presets, Character traits and experimental Recipes support.
+
+Install this fork from `https://github.com/suirenv310/st-chatu8`. **PixAI also requires a separate server plugin installation.** See [patch installation, update instructions and limitations](PATCH.md) before use.
+
+Original author: 从前跟你一样 / damoshen123. Original project README follows.
+
+---
+
 # SillyTavern 文生图 (st-chatu8)
 
 **作者:** 从前跟你一样
