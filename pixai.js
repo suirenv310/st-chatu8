@@ -83,6 +83,11 @@ export function initPixaiSettings({ getSettings, save }) {
             <button class="st-chatu8-btn" type="button" data-action="import">Import presets</button>
             <input hidden type="file" accept=".json,application/json" id="ch-pixai-import">
           </div>
+          <details>
+            <summary>Paste PixAI Quick Copy preset</summary>
+            <textarea class="st-chatu8-textarea" rows="4" id="ch-pixai-import-text" aria-label="PixAI preset JSON" placeholder="Paste the JSON from Copy PixAI Preset"></textarea>
+            <button class="st-chatu8-btn" type="button" data-action="import-text">Import pasted preset</button>
+          </details>
           <div class="st-chatu8-field-col"><label>Preset name · edit to rename</label><input class="st-chatu8-text-input" data-preset="name" maxlength="100"></div>
           <div class="st-chatu8-field-col"><label>Fixed positive prefix · before keywords</label><textarea class="st-chatu8-textarea" rows="3" data-preset="positivePrompt" placeholder="Fixed style, quality, and artist tags..."></textarea></div>
           <div class="st-chatu8-field-col"><label>Fixed positive suffix · after keywords</label><textarea class="st-chatu8-textarea" rows="2" data-preset="postfixPrompt"></textarea></div>
@@ -184,6 +189,12 @@ export function initPixaiSettings({ getSettings, save }) {
         };
         const uniqueName=base=>{base=base.slice(0,90);let name=base,n=2;const names=Object.values(currentState().presets).map(p=>p.name);while(names.includes(name))name=base.slice(0,90)+` (${n++})`;return name;};
         const makeId=()=>crypto.randomUUID();
+        const importPresets=text=>{
+            const presets=parsePresetImport(text);
+            addImportedPresets(currentState(),presets,makeId);
+            save();renderSelect();renderForm();
+            status(`Imported ${presets.length} presets. Current API key preserved.`);
+        };
         section.querySelectorAll('[data-action]').forEach(button=>button.onclick=async()=>{
             const action=button.dataset.action;
             try {
@@ -194,6 +205,13 @@ export function initPixaiSettings({ getSettings, save }) {
                 }
                 if(action==='import'){find('#ch-pixai-import').click();return;}
                 if(!saveForm())return;
+                if(action==='import-text'){
+                    const input=find('#ch-pixai-import-text');
+                    if(!input.value.trim())throw new Error('Paste a PixAI preset first.');
+                    importPresets(input.value);
+                    input.value='';
+                    return;
+                }
                 const s=currentState();
                 if(action==='add-lora'){
                     if(section.querySelectorAll('.ch-pixai-lora').length>=15)throw new Error('Maximum 15 LoRAs.');
@@ -219,8 +237,7 @@ export function initPixaiSettings({ getSettings, save }) {
                 if(!saveForm())return;
                 const file=event.target.files?.[0];if(!file)return;
                 if(file.size>1000000)throw new Error('Preset file exceeds 1MB.');
-                const presets=parsePresetImport(await file.text());
-                addImportedPresets(currentState(),presets,makeId);save();renderSelect();renderForm();status(`Imported ${presets.length} presets. Current API key preserved.`);
+                importPresets(await file.text());
             }catch(error){status(error.message);}finally{event.target.value='';}
         };
         renderSelect();renderForm();save();

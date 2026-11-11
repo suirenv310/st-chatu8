@@ -136,6 +136,24 @@ test('v0.1 migration preserves old key, settings and Banana fixed prompts once',
  const state=ensurePixaiState(parent);assert.equal(state.apiKey,'existing');assert.equal(state.presets.default.positivePrompt,'pixel art');assert.equal(state.presets.default.postfixPrompt,'soft colors');
  parent.banana.conversationPresets.old.fixedPrompt='CHANGED';assert.equal(ensurePixaiState(parent).presets.default.positivePrompt,'pixel art');
 });
+test('imports Quick Copy v4.1 settings with full-length model and LoRA version IDs',()=>{
+ const data={schema:'st-chatu8.pixai-quick-copy',version:1,type:'preset',name:'PixAI Editor Preset',settings:{
+  modelVersionId:'2024383379556065549',
+  loras:[
+   {modelId:'2044126778765934689',weight:0.8},
+   {modelId:'2044126796667224555',weight:0.6},
+   {modelId:'2068135185216883079',weight:0.7}
+  ],
+  prompt:'watercolor',negativePrompt:'text',steps:24,cfgScale:6.5,seed:'42',
+  samplingMethod:'Euler a',aspectRatio:'3:4',width:768,height:1024,apiKey:'unused'
+ }};
+ const [preset]=parsePresetImport(JSON.stringify(data));
+ assert.deepEqual(preset,{...blankPreset(data.name),modelVersionId:data.settings.modelVersionId,loras:data.settings.loras,
+  positivePrompt:'watercolor',negativePrompt:'text',steps:24,cfgScale:6.5,seed:42,samplingMethod:'Euler a',aspectRatio:'3:4'});
+ assert.throws(()=>parsePresetImport(JSON.stringify({...data,version:2})),/version 1/);
+ assert.throws(()=>parsePresetImport(JSON.stringify({...data,settings:{}})),/No supported settings/);
+ assert.throws(()=>parsePresetImport(JSON.stringify({...data,settings:{modelVersionId:2024383379556065549}})),/modelVersionId/);
+});
 test('keyword directive affects only PixAI image-generation requests and preserves original wrapper instructions',()=>{
  const messages=[{role:'system',content:'Keep JSON keys and image insertion markers.'},{role:'user',content:'Scene'}];
  const parent={mode:'banana',pixai:{enabled:true,keywordOnly:true}};

@@ -143,7 +143,18 @@ export function exportPresets(state,all=false) {
 export function parsePresetImport(text) {
     if(text.length>1000000)throw new Error('Preset file exceeds 1MB.');
     const data=JSON.parse(text);
-    if(data.schema!=='st-chatu8.pixai-presets' || data.version!==1 || !Array.isArray(data.presets) || !data.presets.length || data.presets.length>100)throw new Error('Expected a version 1 PixAI preset file containing 1–100 presets.');
+    if(data?.schema==='st-chatu8.pixai-quick-copy') {
+        const settings=data.settings;
+        if(data.version!==1 || data.type!=='preset' || !settings || typeof settings!=='object' || Array.isArray(settings)) {
+            throw new Error('Expected a version 1 PixAI Quick Copy preset.');
+        }
+        const {prompt,negativePrompt,modelVersionId,loras,aspectRatio,samplingMethod,steps,cfgScale,seed}=settings;
+        if([prompt,negativePrompt,modelVersionId,aspectRatio,samplingMethod,steps,cfgScale,seed].every(value=>value===undefined) && !loras?.length) {
+            throw new Error('No supported settings found in the PixAI Quick Copy preset.');
+        }
+        return [sanitizePreset({name:data.name,positivePrompt:prompt,negativePrompt,modelVersionId,loras,aspectRatio,samplingMethod,steps,cfgScale,seed})];
+    }
+    if(data?.schema!=='st-chatu8.pixai-presets' || data.version!==1 || !Array.isArray(data.presets) || !data.presets.length || data.presets.length>100)throw new Error('Expected a version 1 PixAI preset file or PixAI Quick Copy preset.');
     return data.presets.map(sanitizePreset);
 }
 export function addImportedPresets(state,presets,idFactory) {

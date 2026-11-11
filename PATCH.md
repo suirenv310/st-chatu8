@@ -26,6 +26,18 @@ When updating this fork, repeat step 2 if the bridge files changed. The bridge's
 health endpoint `/api/plugins/chatu8-pixai/health` should report version `0.5.0`
 and features `faceFix: true`, `recipes: true`.
 
+## PixAI Quick Copy
+
+1. Install [PixAI Quick Copy v4.1](https://raw.githubusercontent.com/suirenv310/st-chatu8/main/tools/pixai-quick-copy.user.js) in Tampermonkey. Replace or disable any older copy of the userscript.
+2. In the PixAI image editor, click **Copy PixAI Preset** and confirm the preview.
+3. In st-chatu8, open **Banana / Grok / PixAI → Paste PixAI Quick Copy preset**. Paste the JSON and click **Import pasted preset**.
+
+The import creates a preset and selects it. The copied prompt becomes the fixed
+positive prefix. Model version ID, LoRAs, negative prompt, aspect ratio, seed,
+sampler, steps and CFG are imported when present and supported. Set the model
+family and resolution in st-chatu8. Sampler, steps and CFG are sent to PixAI
+when you select **SD / SDXL**.
+
 ## Recipes (experimental)
 
 Select family **Tsubaki**, model version ID `1983308862240288769` and size **1k**.
