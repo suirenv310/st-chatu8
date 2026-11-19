@@ -1,7 +1,7 @@
-# PixAI / English patch v0.5.0
+# PixAI / English patch v0.6.0
 
-Based on st-chatu8 3.1.8 (`340a337b44b6089662408df3a33287fe50d45d75`).
-Original author: 从前跟你一样 / damoshen123. Modified 2026-11-06.
+Based on st-chatu8 3.2.1 (`a4c417f98e9697be44935486a0504713532994b3`).
+Original author: 从前跟你一样 / damoshen123. Modified 2026-11-19.
 Distributed free of charge under the included Aladdin Free Public License v9.
 
 This fork includes the English settings UI, PixAI presets, body appearance
@@ -25,6 +25,24 @@ credits are retained. Saved user content and prompts are not translated.
 When updating this fork, repeat step 2 if the bridge files changed. The bridge's
 health endpoint `/api/plugins/chatu8-pixai/health` should report version `0.5.0`
 and features `faceFix: true`, `recipes: true`.
+
+## Changes in patch v0.6.0
+
+Merged upstream 3.2.1, including RunningHub paid-point balance support,
+NovelAI Anlas/V5 balance queries and collapsible LLM parameter/history sections.
+The extension manifest reports 3.2.1. The PixAI server bridge reports 0.5.0.
+
+Expanded the existing English translation of dynamic menus, confirmation
+dialogs, Vibe/reference status messages, summary controls, theme colors and the
+new balance panels. Protocol placeholders and stored identifiers retain their
+original spelling. Historical upstream release notes remain in their original
+language.
+
+Version checks and reinstall guidance now use this fork's main branch.
+Validation includes the 25 PixAI/recipe tests, a merge structure comparison,
+mocked RunningHub paid-point balance checks and browser checks of the NovelAI
+balance panel at mobile and desktop widths. Provider billing and a deployed
+SillyTavern session were not exercised.
 
 ## PixAI Quick Copy
 

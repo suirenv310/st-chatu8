@@ -1,6 +1,6 @@
 # st-chatu8 — PixAI / English fork
 
-**Patch v0.5.0**, based on upstream 3.1.8. Includes the English UI, PixAI presets, Character traits and experimental Recipes support.
+**Patch v0.6.0**, based on upstream 3.2.1. Includes the English UI, PixAI presets, Character traits, experimental Recipes support and PixAI Quick Copy v4.1.
 
 Install this fork from `https://github.com/suirenv310/st-chatu8`. **PixAI also requires a separate server plugin installation.** See [patch installation, update instructions and limitations](PATCH.md) before use.
 
@@ -121,7 +121,6 @@ Original author: 从前跟你一样 / damoshen123. Original project README follo
 ## 帮助与支持
 
 -   [飞书文档](https://gxcgf4l6b2y.feishu.cn/docx/XDo7dLpvhov6AexuLu3c8mpynSC?from=from_copylink)
--   [投喂作者](https://afdian.com/a/cqgnyy)
 
 ## 许可证
 

@@ -8366,7 +8366,7 @@ async function migrateV1ToV2() {
         }
         const chatData = {
           id: chatId,
-          title: chat4.title || "\u672A\u547D\u540D\u5BF9\u8BDD",
+          title: chat4.title || "Untitled conversation",
           updatedAt: chat4.updatedAt || Date.now(),
           taskData: chat4.taskData || null,
           messages: newMessages
@@ -8900,7 +8900,7 @@ async function setSDMode(sdurl, model) {
     toastr.info(`Switched model to ${model}`);
     addLog(`SD model switched to: ${model}`);
   } catch (error) {
-    addLog(`\u5207\u6362 SD \u6A21\u578B\u5931\u8D25: ${error.message}`);
+    addLog(`Failed to switch SD model: ${error.message}`);
     toastr.error(`Model switch failed: ${error.message}`);
     throw error;
   }
@@ -12399,12 +12399,12 @@ function applyFabSettings() {
         console.log("Video paths:", settings3.chatu8_fab_video_paths);
         if (!checkWebGLSupport()) {
           console.error("WebGL not supported by browser");
-          showToast("\u6D4F\u89C8\u5668\u4E0D\u652F\u6301 WebGL", "error");
+          showToast("This browser does not support WebGL", "error");
           return;
         }
         if (!settings3.chatu8_fab_video_paths || !settings3.chatu8_fab_video_paths.idle || !settings3.chatu8_fab_video_paths.dragging) {
           console.error("Video paths not configured");
-          showToast("\u89C6\u9891\u8DEF\u5F84\u672A\u914D\u7F6E", "error");
+          showToast("Video path is not configured", "error");
           return;
         }
         try {
@@ -12427,7 +12427,7 @@ function applyFabSettings() {
               }
               if (needsRetry) {
                 saveSettingsDebounced4();
-                showToast("\u89C6\u9891\u8DEF\u5F84\u5DF2\u91CD\u7F6E\u4E3A\u9ED8\u8BA4\u503C\uFF0C\u8BF7\u5237\u65B0\u9875\u9762", "warning");
+                showToast("Video path reset to default. Refresh the page.", "warning");
               }
             }
           });
@@ -12448,7 +12448,7 @@ function applyFabSettings() {
           }, 100);
         } catch (error) {
           console.error("Failed to create video player:", error);
-          showToast("\u89C6\u9891\u64AD\u653E\u5668\u521B\u5EFA\u5931\u8D25: " + error.message, "error");
+          showToast("Failed to create video player: " + error.message, "error");
         }
       } else {
         console.log("Video player already exists, skipping creation");
@@ -14585,7 +14585,7 @@ function theme_save() {
       }
     });
   } else {
-    stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D\u4E3B\u9898 "${currentThemeId}" \u5417\uFF1F`).then((confirmed) => {
+    stylishConfirm(`Overwrite theme "${currentThemeId}"?`).then((confirmed) => {
       if (confirmed) {
         settings.themes[currentThemeId] = JSON.parse(JSON.stringify(currentPreviewTheme));
         saveSettingsDebounced5();
@@ -14601,7 +14601,7 @@ function theme_delete() {
     alert("Cannot delete the default theme.");
     return;
   }
-  stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u4E3B\u9898 "${themeIdToDelete}" \u5417?`).then((confirmed) => {
+  stylishConfirm(`Delete theme "${themeIdToDelete}"?`).then((confirmed) => {
     if (confirmed) {
       delete settings.themes[themeIdToDelete];
       settings.theme_id = "\u9ED8\u8BA4-\u767D\u5929";
@@ -14700,24 +14700,24 @@ var init_theme = __esm({
     init_collapsestyle();
     currentPreviewTheme = {};
     colorVarMap = {
-      "--st-chatu8-bg-primary": "\u4E3B\u80CC\u666F\u8272",
-      "--st-chatu8-bg-secondary": "\u6B21\u80CC\u666F\u8272",
-      "--st-chatu8-bg-tertiary": "\u4E09\u7EA7\u80CC\u666F\u8272",
-      "--st-chatu8-text-primary": "\u4E3B\u6587\u672C\u989C\u8272",
-      "--st-chatu8-text-secondary": "\u6B21\u6587\u672C\u989C\u8272",
-      "--st-chatu8-accent-primary": "\u4E3B\u5F3A\u8C03\u8272",
-      "--st-chatu8-accent-secondary": "\u6B21\u5F3A\u8C03\u8272",
-      "--st-chatu8-danger-primary": "\u5371\u9669/\u5220\u9664\u6309\u94AE\u8272",
-      "--st-chatu8-danger-secondary": "\u5371\u9669/\u5220\u9664\u6309\u94AE\u60AC\u505C\u8272",
-      "--st-chatu8-danger-text": "\u5371\u9669/\u5220\u9664\u6309\u94AE\u6587\u672C\u8272",
-      "--st-chatu8-border-color": "\u8FB9\u6846\u989C\u8272",
-      "--st-chatu8-dropdown-bg": "\u4E0B\u62C9\u6846\u80CC\u666F\u8272",
-      "--st-chatu8-dropdown-text": "\u4E0B\u62C9\u5217\u8868\u6587\u672C\u989C\u8272",
-      "--st-chatu8-dropdown-list-bg": "\u4E0B\u62C9\u9009\u9879\u80CC\u666F\u8272",
-      "--st-chatu8-text-highlight": "\u9AD8\u4EAE\u6587\u672C\u989C\u8272",
-      "--st-chatu8-input-bg": "\u8F93\u5165\u6846\u80CC\u666F\u8272",
-      "--st-chatu8-input-text": "\u8F93\u5165\u6846\u6587\u672C\u989C\u8272",
-      "--st-chatu8-input-border": "\u8F93\u5165\u6846\u8FB9\u6846\u989C\u8272"
+      "--st-chatu8-bg-primary": "Primary background",
+      "--st-chatu8-bg-secondary": "Secondary background",
+      "--st-chatu8-bg-tertiary": "Tertiary background",
+      "--st-chatu8-text-primary": "Primary text",
+      "--st-chatu8-text-secondary": "Secondary text",
+      "--st-chatu8-accent-primary": "Primary accent",
+      "--st-chatu8-accent-secondary": "Secondary accent",
+      "--st-chatu8-danger-primary": "Danger/delete button",
+      "--st-chatu8-danger-secondary": "Danger/delete button hover",
+      "--st-chatu8-danger-text": "Danger/delete button text",
+      "--st-chatu8-border-color": "Border",
+      "--st-chatu8-dropdown-bg": "Dropdown background",
+      "--st-chatu8-dropdown-text": "Dropdown text",
+      "--st-chatu8-dropdown-list-bg": "Dropdown option background",
+      "--st-chatu8-text-highlight": "Highlighted text",
+      "--st-chatu8-input-bg": "Input background",
+      "--st-chatu8-input-text": "Input text",
+      "--st-chatu8-input-border": "Input border"
     };
   }
 });
@@ -16868,7 +16868,7 @@ function parseImagesFromPrompt(text) {
   });
   timer.end(`\u89E3\u6790\u5230 ${images.length} \u4E2A\u6709\u6548\u56FE\u7247`);
   if (imageBlocks.length > 0 && images.length === 0) {
-    toastr.warning(`LLM \u8F93\u51FA\u89E3\u6790\u5931\u8D25\uFF1A\u68C0\u6D4B\u5230 <image> \u6807\u7B7E\u4F46\u672A\u80FD\u89E3\u6790\u51FA\u6709\u6548\u6570\u636E\u3002\u8BF7\u68C0\u67E5 LLM \u8F93\u51FA\u683C\u5F0F\u662F\u5426\u5305\u542B regex: \u884C\u3002`);
+    toastr.warning(`Could not parse the LLM output. An <image> tag was found, but its data could not be read. Check that the output includes a regex: line.`);
   }
   return images;
 }
@@ -23154,13 +23154,13 @@ function setChannelTypeUI(channel) {
 }
 function updateVertexCredentialsUI() {
   if (currentVertexCredentials && currentVertexCredentials.client_email) {
-    vertexStatusText?.text("\u51ED\u636E\u5DF2\u5C31\u7EEA").css("color", "var(--st-chatu8-success, #28a745)");
+    vertexStatusText?.text("Credentials ready").css("color", "var(--st-chatu8-success, #28a745)");
     vertexCredInfo?.show();
     vertexProjectIdText?.text(currentVertexCredentials.project_id || "-");
     vertexClientEmailText?.text(currentVertexCredentials.client_email || "-");
     vertexClearBtn?.show();
   } else {
-    vertexStatusText?.text("\u5C1A\u672A\u5BFC\u5165\u51ED\u636E\u6587\u4EF6").css("color", "var(--st-chatu8-text-secondary)");
+    vertexStatusText?.text("Import a credentials file").css("color", "var(--st-chatu8-text-secondary)");
     vertexCredInfo?.hide();
     vertexClearBtn?.hide();
   }
@@ -24086,7 +24086,7 @@ async function onTestLLMClick() {
       const vertexJson = await response.json();
       const openAiResp = convertVertexToOpenAIResponse(vertexJson, currentData.vertex_model);
       const reply = openAiResp.choices?.[0]?.message?.content || "\u672A\u8FD4\u56DE\u6709\u6548\u5185\u5BB9";
-      resultTextarea.val(`[Vertex AI \u8FDE\u63A5\u6210\u529F]
+      resultTextarea.val(`[Vertex AI connected]
 
 ${reply}`);
       toastr.success("Vertex AI connection successful!");
@@ -24094,7 +24094,7 @@ ${reply}`);
       if (err.name === "AbortError") {
         resultTextarea.val("\u8BF7\u6C42\u5DF2\u53D6\u6D88\u3002");
       } else {
-        resultTextarea.val(`[Vertex \u8BF7\u6C42\u5931\u8D25]
+        resultTextarea.val(`[Vertex request failed]
 ${err.message}`);
         toastr.error(`Vertex test failed: ${err.message}`);
       }
@@ -25321,13 +25321,17 @@ function bindUIEvents() {
     triggerProfileAutoSave();
   });
   historyDepthSlider.on("input", () => {
-    historyDepthValue.val(historyDepthSlider.val());
-    extension_settings18[extensionName].llm_history_depth = parseInt(historyDepthSlider.val(), 10);
+    const val = Math.min(5, Math.max(0, parseInt(historyDepthSlider.val(), 10) || 0));
+    historyDepthSlider.val(val);
+    historyDepthValue.val(val);
+    extension_settings18[extensionName].llm_history_depth = val;
     saveSettingsDebounced10();
   });
   historyDepthValue.on("input", () => {
-    historyDepthSlider.val(historyDepthValue.val());
-    extension_settings18[extensionName].llm_history_depth = parseInt(historyDepthValue.val(), 10);
+    const val = Math.min(5, Math.max(0, parseInt(historyDepthValue.val(), 10) || 0));
+    historyDepthSlider.val(val);
+    historyDepthValue.val(val);
+    extension_settings18[extensionName].llm_history_depth = val;
     saveSettingsDebounced10();
   });
   retryCountSlider.on("input", () => {
@@ -25345,7 +25349,7 @@ function bindUIEvents() {
   bypassProxyToggle.on("change", function() {
     if ($(this).prop("checked")) {
       toastr.warning(
-        "\u5F00\u542F\u6B64\u9009\u9879\u540E\uFF0C\u5C06\u76F4\u63A5\u901A\u8FC7\u6D4F\u89C8\u5668\u8BF7\u6C42 API\uFF0C\u53EF\u80FD\u5B58\u5728\u8DE8\u57DF(CORS)\u95EE\u9898\u3002<br><br>\u6B64\u529F\u80FD\u4EC5\u7528\u4E8E\u89E3\u51B3\u9152\u9986\u540C\u65F6\u8BF7\u6C42\u5BFC\u81F4\u7684 bug\uFF0C\u8BF7\u786E\u4FDD\u4F60\u7684 API \u670D\u52A1\u5668\u5DF2\u914D\u7F6E CORS \u6216\u90E8\u7F72\u5728\u540C\u57DF\u4E0B\u3002",
+        "Enabling this sends API requests directly from your browser and may encounter CORS errors.<br><br>This option works around simultaneous-request issues in SillyTavern. Configure CORS on the API server or host it on the same origin.",
         "CORS notice",
         { timeOut: 8e3, closeButton: true, escapeHtml: false }
       );
@@ -25391,7 +25395,9 @@ function loadInitialData() {
   loadTestContextProfiles();
   loadRequestTypeProfiles(true);
   loadGlobalToolAndTailSettingsToUI();
-  const historyDepth = extension_settings18[extensionName].llm_history_depth ?? 0;
+  const rawHistoryDepth = extension_settings18[extensionName].llm_history_depth ?? 0;
+  const historyDepth = Math.min(5, Math.max(0, parseInt(rawHistoryDepth, 10) || 0));
+  extension_settings18[extensionName].llm_history_depth = historyDepth;
   historyDepthSlider.val(historyDepth);
   historyDepthValue.val(historyDepth);
   const tagthinkEcho = String(extension_settings18[extensionName].tagthinkEcho) === "true";
@@ -25785,7 +25791,7 @@ function encryptPresetNames(presets, prefix) {
   return { encryptedPresets, nameMap };
 }
 async function encryptExportData(dataToExport) {
-  const shouldEncrypt = await stylishConfirm("\u662F\u5426\u5BF9\u5BFC\u51FA\u5185\u5BB9\u8FDB\u884C Base64 \u52A0\u5BC6\u4FDD\u62A4?\n\n\u52A0\u5BC6\u540E\u53EF\u9632\u6B62\u6587\u672C\u7F16\u8F91\u5668\u76F4\u63A5\u67E5\u770B\u654F\u611F\u5185\u5BB9\u3002");
+  const shouldEncrypt = await stylishConfirm("Base64-encode the exported content?\n\nBase64 obscures plain text and can be decoded easily.");
   if (shouldEncrypt) {
     const allNameMaps = {};
     const charForwardMap = {};
@@ -27637,7 +27643,7 @@ function createGroupTagButton(config) {
       if (name === false) return;
       const group = createGroup(settings3, scope, name);
       if (!group) {
-        showToast("\u5206\u7EC4\u540D\u79F0\u4E3A\u7A7A\u6216\u5DF2\u5B58\u5728", "warning");
+        showToast("Group name is empty or already exists", "warning");
         return;
       }
       toggleMembership(settings3, scope, group.id, itemName, true);
@@ -27770,7 +27776,7 @@ function showGroupManagePanel(config) {
           const newName = await promptInput(`Rename group \"${group.name}\":`, group.name);
           if (newName === false || newName === group.name) return;
           if (!renameGroup(settings3, scope, group.id, newName)) {
-            showToast("\u5206\u7EC4\u540D\u79F0\u4E3A\u7A7A\u6216\u5DF2\u5B58\u5728", "warning");
+            showToast("Group name is empty or already exists", "warning");
             return;
           }
           dirty = true;
@@ -27784,13 +27790,13 @@ function showGroupManagePanel(config) {
         deleteBtn.onclick = async (e) => {
           e.stopPropagation();
           const ok = await stylishConfirm(
-            `\u786E\u5B9A\u5220\u9664\u5206\u7EC4\u300C${group.name}\u300D\u5417\uFF1F
-\u53EA\u5220\u9664\u5206\u7EC4\uFF0C\u91CC\u9762\u7684\u6761\u76EE\u4E0D\u4F1A\u88AB\u5220\u9664\u3002`
+            `Delete group “${group.name}”?
+Entries inside the group will be kept.`
           );
           if (!ok) return;
           deleteGroup(settings3, scope, group.id);
           dirty = true;
-          showToast(`\u5DF2\u5220\u9664\u5206\u7EC4\u300C${group.name}\u300D`, "success");
+          showToast(`Deleted group “${group.name}\u300D`, "success");
           if (selectedGroupId === group.id) selectedGroupId = null;
           renderLeft();
           renderRight();
@@ -27812,7 +27818,7 @@ function showGroupManagePanel(config) {
         if (name === false) return;
         const group = createGroup(settings3, scope, name);
         if (!group) {
-          showToast("\u5206\u7EC4\u540D\u79F0\u4E3A\u7A7A\u6216\u5DF2\u5B58\u5728", "warning");
+          showToast("Group name is empty or already exists", "warning");
           return;
         }
         dirty = true;
@@ -28654,7 +28660,7 @@ function handleImageUpload(presetName, presets, imageIdField, container) {
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("\u4E0A\u4F20\u9884\u89C8\u56FE\u5931\u8D25:", error);
+      console.error("Preview upload failed: ", error);
       alert("Preview upload failed: " + error.message);
     }
   };
@@ -28881,7 +28887,7 @@ function loadOutfitPreset() {
       }
     }
     if (isDirty) {
-      stylishConfirm("\u60A8\u6709\u672A\u4FDD\u5B58\u7684\u670D\u88C5\u6570\u636E\u3002\u8981\u653E\u5F03\u8FD9\u4E9B\u66F4\u6539\u5E76\u5207\u6362\u9884\u8BBE\u5417\uFF1F").then((confirmed) => {
+      stylishConfirm("You have unsaved outfit changes. Discard them and switch presets?").then((confirmed) => {
         if (confirmed) {
           settings3.outfitPresetId = newPresetId;
           loadOutfitPresetData(newPresetId);
@@ -29036,7 +29042,7 @@ function deleteOutfitPreset() {
     alert("Cannot delete the default preset");
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5\u670D\u88C5\u9884\u8BBE").then((result) => {
+  stylishConfirm("Delete this outfit preset").then((result) => {
     if (result) {
       delete settings3.outfitPresets[presetId];
       settings3.outfitPresetId = "\u9ED8\u8BA4\u670D\u88C5";
@@ -29297,7 +29303,7 @@ function cleanTagForTranslation(tag) {
 }
 async function clearOutfitDetailParameters() {
   const confirmed = await stylishConfirm(
-    "\u786E\u5B9A\u8981\u6E05\u7A7A\u6240\u6709\u8BE6\u7EC6\u53C2\u6570\u5417\uFF1F\n\n\u8FD9\u5C06\u6E05\u7A7A\u4EE5\u4E0B\u5B57\u6BB5\uFF1A\n- \u4E0A\u534A\u8EAB\u63CF\u8FF0\uFF08\u6B63\u9762/\u80CC\u9762\uFF09\n- \u5168\u8EAB\u63CF\u8FF0\uFF08\u6B63\u9762/\u80CC\u9762\uFF09\n\n\u6B64\u64CD\u4F5C\u4E0D\u4F1A\u81EA\u52A8\u4FDD\u5B58\uFF0C\u60A8\u9700\u8981\u624B\u52A8\u4FDD\u5B58\u66F4\u6539\u3002"
+    "Clear all detailed parameters?\n\nThis clears upper-body and full-body descriptions, including front and back views. Save manually to keep the changes."
   );
   if (!confirmed) {
     return;
@@ -29371,7 +29377,7 @@ async function translateOutfitFields() {
       toastr.info("Empty translation result.");
     }
   } catch (error) {
-    console.error("\u7FFB\u8BD1\u5931\u8D25:", error);
+    console.error("Translation failed: ", error);
     toastr.clear();
     toastr.error(`Translation failed. Check LLM settings.`);
   }
@@ -29721,7 +29727,7 @@ async function translateOutfitPhotoPrompt() {
       toastr.info("Empty translation result.");
     }
   } catch (error) {
-    console.error("\u7FFB\u8BD1\u5931\u8D25:", error);
+    console.error("Translation failed: ", error);
     toastr.clear();
     toastr.error("Translation failed. Check LLM settings.");
   }
@@ -29952,7 +29958,7 @@ async function showOutfitImageViewer(imageIds, initialIndex) {
     }
   });
   deleteButton.addEventListener("click", async () => {
-    const confirmed = await stylishConfirm("\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u5F20\u670D\u88C5\u56FE\u7247\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002");
+    const confirmed = await stylishConfirm("Permanently delete this outfit image?");
     if (confirmed) {
       try {
         const imageIdToDelete = imageIds[currentIndex];
@@ -29998,7 +30004,7 @@ async function showOutfitImageViewer(imageIds, initialIndex) {
       toastr.info("No other images to delete");
       return;
     }
-    const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u5F53\u524D\u56FE\u7247\u4E4B\u5916\u7684 ${imageIds.length - 1} \u5F20\u56FE\u7247\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002`);
+    const confirmed = await stylishConfirm(`Permanently delete the other ${imageIds.length - 1} images?`);
     if (confirmed) {
       try {
         const currentImageId = imageIds[currentIndex];
@@ -30332,10 +30338,9 @@ function importInjectionTemplatePreset(container) {
           if (!finalName) continue;
           if (injTpl.presets[finalName]) {
             const confirmed = await stylishConfirm(
-              `\u65B9\u6848\u300C${finalName}\u300D\u5DF2\u5B58\u5728\uFF0C\u662F\u5426\u8986\u76D6\uFF1F
+              `Template “${finalName}” already exists. Overwrite it?
 
-\u70B9\u51FB\u3010\u786E\u5B9A\u3011\u8986\u76D6\u539F\u65B9\u6848
-\u70B9\u51FB\u3010\u53D6\u6D88\u3011\u5C06\u53E6\u5B58\u4E3A\u65B0\u65B9\u6848`
+OK overwrites the template. Cancel saves a new copy.`
             );
             if (!confirmed) {
               let counter = 1;
@@ -30491,7 +30496,7 @@ function setupInjectionTemplateControls(container) {
     ensureInjectionTemplatesInit();
     const injTpl = extension_settings24[extensionName].injectionTemplates;
     const currentId = injTpl.currentPresetId || "\u9ED8\u8BA4\u65B9\u6848";
-    stylishConfirm(`\u662F\u5426\u786E\u5B9A\u628A\u65B9\u6848\u300C${currentId}\u300D\u6062\u590D\u4E3A\u9ED8\u8BA4\u5185\u5BB9`).then((confirmed) => {
+    stylishConfirm(`Restore template “${currentId}” to its defaults`).then((confirmed) => {
       if (!confirmed) return;
       const source = SYSTEM_INJECTION_TEMPLATES[currentId] || SYSTEM_INJECTION_TEMPLATES["\u9ED8\u8BA4\u65B9\u6848"];
       injTpl.presets[currentId] = { ...source };
@@ -30508,7 +30513,7 @@ function setupInjectionTemplateControls(container) {
       toastr.warning(`Cannot delete built-in scheme \"${currentId}\"`);
       return;
     }
-    stylishConfirm(`\u662F\u5426\u786E\u5B9A\u5220\u9664\u65B9\u6848\u300C${currentId}\u300D`).then((confirmed) => {
+    stylishConfirm(`Delete template “${currentId}\u300D`).then((confirmed) => {
       if (!confirmed) return;
       delete injTpl.presets[currentId];
       injTpl.currentPresetId = "\u9ED8\u8BA4\u65B9\u6848";
@@ -32320,7 +32325,7 @@ function loadCharacterPreset() {
       }
     }
     if (isDirty) {
-      stylishConfirm("\u60A8\u6709\u672A\u4FDD\u5B58\u7684\u89D2\u8272\u6570\u636E\u3002\u8981\u653E\u5F03\u8FD9\u4E9B\u66F4\u6539\u5E76\u5207\u6362\u9884\u8BBE\u5417\uFF1F").then((confirmed) => {
+      stylishConfirm("You have unsaved character changes. Discard them and switch presets?").then((confirmed) => {
         if (confirmed) {
           settings3.characterPresetId = newPresetId;
           loadCharacterPresetData(newPresetId);
@@ -32530,7 +32535,7 @@ function deleteCharacterPreset() {
     alert("Cannot delete the default preset");
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5\u89D2\u8272\u9884\u8BBE").then((result) => {
+  stylishConfirm("Delete this character preset").then((result) => {
     if (result) {
       delete settings3.characterPresets[presetId];
       settings3.characterPresetId = "\u9ED8\u8BA4\u89D2\u8272";
@@ -33031,7 +33036,7 @@ function cleanTagForTranslation2(tag) {
 }
 async function clearCharacterDetailParameters() {
   const confirmed = await stylishConfirm(
-    "\u786E\u5B9A\u8981\u6E05\u7A7A\u6240\u6709\u8BE6\u7EC6\u53C2\u6570\u5417\uFF1F\n\n\u8FD9\u5C06\u6E05\u7A7A\u4EE5\u4E0B\u5B57\u6BB5\uFF1A\n- \u89D2\u8272\u7279\u8D28\n- \u9762\u90E8\u7279\u5F81\uFF08\u6B63\u9762/\u80CC\u9762\uFF09\n- \u4E0A\u534A\u8EAB\u63CF\u8FF0\uFF08SFW/NSFW\uFF0C\u6B63\u9762/\u80CC\u9762\uFF09\n- \u5168\u8EAB\u63CF\u8FF0\uFF08SFW/NSFW\uFF0C\u6B63\u9762/\u80CC\u9762\uFF09\n- \u8D1F\u9762\u63D0\u793A\u8BCD\n\n\u6B64\u64CD\u4F5C\u4E0D\u4F1A\u81EA\u52A8\u4FDD\u5B58\uFF0C\u60A8\u9700\u8981\u624B\u52A8\u4FDD\u5B58\u66F4\u6539\u3002"
+    "Clear all detailed parameters?\n\nThis clears character traits, facial features, SFW/NSFW upper-body and full-body descriptions, and negative prompts. Save manually to keep the changes."
   );
   if (!confirmed) {
     return;
@@ -33113,7 +33118,7 @@ async function translateCharacterFields() {
       toastr.info("Empty translation result.");
     }
   } catch (error) {
-    console.error("\u7FFB\u8BD1\u5931\u8D25:", error);
+    console.error("Translation failed: ", error);
     toastr.clear();
     toastr.error(`Translation failed. Check LLM settings.`);
   }
@@ -33163,7 +33168,7 @@ async function translatePhotoPrompt() {
       toastr.info("Empty translation result.");
     }
   } catch (error) {
-    console.error("\u7FFB\u8BD1\u5931\u8D25:", error);
+    console.error("Translation failed: ", error);
     toastr.clear();
     toastr.error("Translation failed. Check LLM settings.");
   }
@@ -33891,7 +33896,7 @@ async function showImageViewer(imageIds, initialIndex) {
     }
   });
   deleteButton.addEventListener("click", async () => {
-    const confirmed = await stylishConfirm("\u786E\u5B9A\u8981\u5220\u9664\u8FD9\u5F20\u89D2\u8272\u56FE\u7247\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002");
+    const confirmed = await stylishConfirm("Permanently delete this character image?");
     if (confirmed) {
       try {
         const imageIdToDelete = imageIds[currentIndex];
@@ -33954,7 +33959,7 @@ async function showImageViewer(imageIds, initialIndex) {
       toastr.info("No other images to delete");
       return;
     }
-    const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u5F53\u524D\u56FE\u7247\u4E4B\u5916\u7684 ${imageIds.length - 1} \u5F20\u56FE\u7247\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002`);
+    const confirmed = await stylishConfirm(`Permanently delete the other ${imageIds.length - 1} images?`);
     if (confirmed) {
       try {
         const currentImageId = imageIds[currentIndex];
@@ -35219,7 +35224,7 @@ function deleteCharacterEnablePreset() {
     alert("Cannot delete the default preset");
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5\u89D2\u8272\u542F\u7528\u9884\u8BBE").then((result) => {
+  stylishConfirm("Delete this enabled-character preset").then((result) => {
     if (result) {
       delete settings3.characterEnablePresets[presetId];
       settings3.characterEnablePresetId = "\u9ED8\u8BA4\u542F\u7528\u5217\u8868";
@@ -35852,7 +35857,7 @@ function deleteOutfitEnablePreset() {
     alert("Cannot delete the default preset");
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5\u901A\u7528\u670D\u88C5\u5217\u8868\u9884\u8BBE").then((result) => {
+  stylishConfirm("Delete this common-outfit list preset").then((result) => {
     if (result) {
       delete settings3.outfitEnablePresets[presetId];
       settings3.outfitEnablePresetId = "\u9ED8\u8BA4\u670D\u88C5\u5217\u8868";
@@ -36245,7 +36250,7 @@ function deleteCharacterCommonPreset() {
     alert("Cannot delete the default preset");
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5\u901A\u7528\u89D2\u8272\u5217\u8868\u9884\u8BBE").then((result) => {
+  stylishConfirm("Delete this common-character list preset").then((result) => {
     if (result) {
       delete settings3.characterCommonPresets[presetId];
       settings3.characterCommonPresetId = "\u9ED8\u8BA4\u901A\u7528\u89D2\u8272\u5217\u8868";
@@ -36652,7 +36657,7 @@ function updateBananaCharacterPreset() {
     alert("No active Banana character preset. Use Save as first.");
     return;
   }
-  stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D Banana \u89D2\u8272\u9884\u8BBE "${presetId}" \u5417\uFF1F`).then((confirmed) => {
+  stylishConfirm(`Overwrite Banana character preset "${presetId}"?`).then((confirmed) => {
     if (confirmed) {
       saveCurrentBananaCharacterData(presetId);
       alert(`Banana character preset \"${presetId}\" updated.`);
@@ -36772,7 +36777,7 @@ async function deleteBananaCharacterPreset() {
     alert("Cannot delete the last preset.");
     return;
   }
-  const confirmed = await stylishConfirm(`\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5 Banana \u89D2\u8272\u9884\u8BBE "${presetId}"`);
+  const confirmed = await stylishConfirm(`Delete Banana character preset "${presetId}"`);
   if (confirmed) {
     const preset = settings3.bananaCharacterPresets[presetId];
     if (preset?.conversation?.user?.imageId && preset.conversation.user.imageId.startsWith("cfgimg_")) {
@@ -37587,7 +37592,7 @@ async function handleExtractedData(extracted, metadata = {}) {
   for (const outfitData of outfits) {
     const presetName = cardPrefix ? `${cardPrefix}${outfitData.nameCN}` : outfitData.nameCN;
     if (settings3.outfitPresets[presetName]) {
-      const overwrite = await stylishConfirm(`\u670D\u88C5 "${presetName}" \u5DF2\u5B58\u5728,\u662F\u5426\u8986\u76D6?`);
+      const overwrite = await stylishConfirm(`Outfit "${presetName}" already exists. Overwrite it?`);
       if (!overwrite) continue;
     }
     settings3.outfitPresets[presetName] = {
@@ -37608,7 +37613,7 @@ async function handleExtractedData(extracted, metadata = {}) {
   for (const charData of characters) {
     const presetName = cardPrefix ? `${cardPrefix}${charData.nameCN}` : charData.nameCN;
     if (settings3.characterPresets[presetName]) {
-      const overwrite = await stylishConfirm(`\u89D2\u8272 "${presetName}" \u5DF2\u5B58\u5728,\u662F\u5426\u8986\u76D6?`);
+      const overwrite = await stylishConfirm(`Character "${presetName}" already exists. Overwrite it?`);
       if (!overwrite) continue;
     }
     const matchedOutfitNames = [];
@@ -37616,7 +37621,7 @@ async function handleExtractedData(extracted, metadata = {}) {
       for (const outfitData of charData.matchedOutfits) {
         const outfitName = cardPrefix ? `${cardPrefix}${outfitData.nameCN}` : outfitData.nameCN;
         if (settings3.outfitPresets[outfitName]) {
-          const overwrite = await stylishConfirm(`\u670D\u88C5 "${outfitName}" \u5DF2\u5B58\u5728,\u662F\u5426\u8986\u76D6?`);
+          const overwrite = await stylishConfirm(`Outfit "${outfitName}" already exists. Overwrite it?`);
           if (!overwrite) continue;
         }
         settings3.outfitPresets[outfitName] = {
@@ -37711,7 +37716,7 @@ async function handleExtractedData(extracted, metadata = {}) {
   }
   if (createdCharacters.length > 0) {
     const enable = await stylishConfirm(
-      `\u662F\u5426\u5728\u5F53\u524D\u89D2\u8272\u542F\u7528\u5217\u8868\u4E2D\u542F\u7528\u8FD9 ${createdCharacters.length} \u4E2A\u89D2\u8272?`
+      `Enable these ${createdCharacters.length} characters in the current enabled-character list?`
     );
     if (enable) {
       const currentPresetId = settings3.characterEnablePresetId;
@@ -39534,7 +39539,7 @@ function setupVideoDemandAssetSection(section, firstFrameSrc, selectedImages3) {
           }
           openVideoAssetPicker({
             type: "img",
-            title: `<i class="fa-solid fa-photo-film" style="color:#60a5fa"></i> \u4E3A &lt;Picture ${pictureIndex}&gt; \u9009\u62E9\u89C6\u9891\u8D44\u4EA7`,
+            title: `<i class="fa-solid fa-photo-film" style="color:#60a5fa"></i> Choose an asset for &lt;Picture ${pictureIndex}&gt;`,
             onSelect: (asset, imageBlob, dataUrl) => {
               if (!asset?.fileid || !dataUrl) {
                 toastr.warning("Video asset has no valid image or file_id");
@@ -39568,9 +39573,9 @@ function setupVideoDemandAssetSection(section, firstFrameSrc, selectedImages3) {
 }
 function showUserDemandPopup2(options = {}) {
   const {
-    title: customTitle = "\u{1F5BC}\uFE0F \u8F93\u5165\u751F\u56FE\u9700\u6C42",
-    hint: customHint = "\u8BF7\u63CF\u8FF0\u60A8\u5E0C\u671B\u751F\u6210\u7684\u56FE\u7247\u7684\u5177\u4F53\u9700\u6C42\uFF08\u53EF\u9009\uFF09",
-    placeholder: customPlaceholder = "\u4F8B\u5982\uFF1A\u91CD\u70B9\u63CF\u7ED8\u573A\u666F\u6C1B\u56F4\uFF0C\u5149\u7EBF\u67D4\u548C...",
+    title: customTitle = "🖼️ Image request",
+    hint: customHint = "Describe the image you want to generate (optional)",
+    placeholder: customPlaceholder = "E.g. emphasize the atmosphere with soft lighting...",
     defaultText = "",
     videoAssetMode = false,
     firstFrameSrc = ""
@@ -40117,7 +40122,7 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
   let defaultDemand = "";
   let popupOptions = {
     title: "🖼️ Image requirements",
-    hint: "\u8BF7\u63CF\u8FF0\u60A8\u5E0C\u671B\u751F\u6210\u7684\u56FE\u7247\u7684\u5177\u4F53\u9700\u6C42\uFF08\u53EF\u9009\uFF09",
+    hint: "Describe the image you want to generate (optional)",
     placeholder: "E.g. focus on atmosphere, soft lighting..."
   };
   if (requestType === "visual_mat_prep") {
@@ -40125,7 +40130,7 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
     defaultDemand = extension_settings40[extensionName]?.defaultVisualPrepDemand || "";
     popupOptions = {
       title: "🎬 Video preparation requirements",
-      hint: "\u8BF7\u63CF\u8FF0\u60A8\u5E0C\u671B\u51C6\u5907\u7684\u89C6\u6750/\u89C6\u9891\u955C\u5934\u7684\u5177\u4F53\u9700\u6C42\uFF08\u53EF\u9009\uFF09",
+      hint: "Describe the visual assets or video shots you need (optional)",
       placeholder: "E.g. camera movement, framing, motion and mood..."
     };
   } else {
@@ -44043,8 +44048,8 @@ function showEditDialog(img, button) {
   const updateTabIndicators = () => {
     const hasImageContent = !!(imageText && imageText.trim() && imageText !== button.dataset.link);
     const hasVideoContent = !!(videoText && videoText.trim());
-    imageTab.innerHTML = `\u{1F5BC}\uFE0F \u56FE\u7247\u6807\u7B7E${hasImageContent ? '<span class="st-chatu8-mode-tab-dot"></span>' : ""}`;
-    videoTab.innerHTML = `\u{1F3AC} \u89C6\u9891\u6807\u7B7E${hasVideoContent ? '<span class="st-chatu8-mode-tab-dot"></span>' : ""}`;
+    imageTab.innerHTML = `🖼️ Image tags${hasImageContent ? '<span class="st-chatu8-mode-tab-dot"></span>' : ""}`;
+    videoTab.innerHTML = `🎬 Video tags${hasVideoContent ? '<span class="st-chatu8-mode-tab-dot"></span>' : ""}`;
   };
   updateTabIndicators();
   modeSwitch.appendChild(imageTab);
@@ -44633,7 +44638,7 @@ ${p1}`;
       toastr.success("Translation complete");
       if (typeof debouncedUpdateDialogTokens === "function") debouncedUpdateDialogTokens();
     } catch (e) {
-      console.error("\u7F16\u8F91\u6807\u7B7E\u7FFB\u8BD1\u5931\u8D25:", e);
+      console.error("Tag translation failed: ", e);
       alert(`Translation failed: ${e.message || e}`);
     } finally {
       translateButton.disabled = false;
@@ -44891,7 +44896,7 @@ ${p1}`;
     imageProcessMenu.style.display = "none";
     const demandResult = await showUserDemandPopup2({
       title: "🎬 Video generation requirements",
-      hint: "\u8BF7\u63CF\u8FF0\u60A8\u5E0C\u671B\u751F\u6210\u7684\u89C6\u9891\u7684\u5177\u4F53\u9700\u6C42\uFF08\u53EF\u9009\uFF09",
+      hint: "Describe the video you want to generate (optional)",
       placeholder: "E.g. camera angle and motion, character actions, lighting and mood...",
       defaultText: "",
       videoAssetMode: true,
@@ -45713,7 +45718,7 @@ var init_runninghubScheduler = __esm({
                   continue;
                 }
                 if (zeroBalanceCount > 0 && zeroBalanceCount + pausedCount === keys.length) {
-                  this.finishWaiter(w, new Error("\u914D\u7F6E\u7684\u5168\u90E8\u53EF\u7528 RunningHub API Key \u4F59\u989D\u5747\u5C0F\u4E8E\u7B49\u4E8E0\uFF0C\u8BF7\u5145\u503C\u540E\u91CD\u8BD5\uFF01"));
+                  this.finishWaiter(w, new Error("\u914D\u7F6E\u7684\u5168\u90E8\u53EF\u7528 RunningHub API Key \u989D\u5EA6\uFF08\u79EF\u5206\u3001RH\u5E01\u3001\u94B1\u5305\u4F59\u989D\uFF09\u5747\u5C0F\u4E8E\u7B49\u4E8E0\uFF0C\u8BF7\u5145\u503C\u540E\u91CD\u8BD5\uFF01"));
                   continue;
                 }
               }
@@ -45739,6 +45744,7 @@ var init_runninghubScheduler = __esm({
           cancelled: false,
           queueInfo: s.info?.queue,
           remainCoins: s.info?.balance?.remainCoins,
+          remainPoint: s.info?.balance?.remainPoint,
           isCancelled: () => lease.cancelled,
           // 晚绑定与孤儿终止，防止网络间隙期取消导致云端任务泄漏
           setRemoteTaskId: (rId) => {
@@ -46080,12 +46086,14 @@ async function checkKeyHasBalance(apiKey, forceRefresh = false) {
   try {
     const data = await fetchRunningHubAccountStatus(apiKey);
     if (data && data.code === 0 && data.data) {
+      const remainPoint = parseFloat(data.data.remainPoint ?? 0);
       const remainCoins = parseFloat(data.data.remainCoins ?? 0);
       const remainMoney = parseFloat(data.data.remainMoney ?? 0);
-      const hasBalance = remainCoins > 0 || remainMoney > 0;
+      const hasBalance = remainPoint > 0 || remainCoins > 0 || remainMoney > 0;
       const result = {
         isValid: true,
         hasBalance,
+        remainPoint,
         remainCoins,
         remainMoney,
         raw: data.data,
@@ -46097,6 +46105,7 @@ async function checkKeyHasBalance(apiKey, forceRefresh = false) {
       const result = {
         isValid: false,
         hasBalance: false,
+        remainPoint: 0,
         remainCoins: 0,
         remainMoney: 0,
         raw: data,
@@ -46111,6 +46120,7 @@ async function checkKeyHasBalance(apiKey, forceRefresh = false) {
     return {
       isValid: false,
       hasBalance: false,
+      remainPoint: 0,
       remainCoins: 0,
       remainMoney: 0,
       errorCode: -1,
@@ -46586,7 +46596,7 @@ function worker_save() {
 }
 function worker_delete() {
   const settings3 = extension_settings48[extensionName];
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664").then((result) => {
+  stylishConfirm("Confirm deletion of ").then((result) => {
     if (result) {
       const worker = document.getElementById("worker");
       const selectElement = document.getElementById("workerid");
@@ -46616,7 +46626,7 @@ function worker_update() {
     alert(`Default workflow \"${presetName}\" cannot be modified. Use Save as to create a copy.`);
     return;
   }
-  stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D\u5DE5\u4F5C\u6D41 "${presetName}" \u5417\uFF1F`).then((confirmed) => {
+  stylishConfirm(`Overwrite workflow "${presetName}"?`).then((confirmed) => {
     if (confirmed) {
       const workerValue = document.getElementById("worker").value;
       settings3.workers[presetName] = workerValue;
@@ -47504,7 +47514,7 @@ function editWorker_save() {
 }
 function editWorker_delete() {
   const settings3 = extension_settings48[extensionName];
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664").then((result) => {
+  stylishConfirm("Confirm deletion of ").then((result) => {
     if (result) {
       const editWorker = document.getElementById("editWorker");
       const selectElement = document.getElementById("editWorkerid");
@@ -47557,7 +47567,7 @@ function editWorker_update() {
     alert(`Default workflow \"${presetName}\" cannot be modified. Use Save as to create a copy.`);
     return;
   }
-  stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D\u5DE5\u4F5C\u6D41 "${presetName}" \u5417\uFF1F`).then((confirmed) => {
+  stylishConfirm(`Overwrite workflow "${presetName}"?`).then((confirmed) => {
     if (confirmed) {
       const editWorkerValue = document.getElementById("editWorker").value;
       settings3.workers[presetName] = editWorkerValue;
@@ -47985,7 +47995,7 @@ async function generateComfyUIImage({ prompt: link, width: Xwidth, height: Xheig
   addLog(`\u8BF7\u6C42\u5DE5\u4F5C\u6D41id - ${extension_settings49[extensionName].workerid}`);
   addLog(`\u8BF7\u6C42\u5C3A\u5BF8: \u5BBD\u5EA6 - ${Xwidth || "\u9ED8\u8BA4"}, \u9AD8\u5EA6 - ${Xheight || "\u9ED8\u8BA4"}`);
   if (extension_settings49[extensionName].MODEL_NAME.trim() === "\u8FDE\u63A5\u540E\u9009\u62E9") {
-    addLog("\u8BF7\u586B\u5199ComfyUI\u6A21\u578B\u3002");
+    addLog("Enter a ComfyUI model.");
     toastr.error("Enter a ComfyUI model.");
     taskQueue.completeTask(taskId, false);
     activeComfyuiTasks.delete(taskId);
@@ -48490,7 +48500,7 @@ async function comfyuigenerate(requestData) {
         onTailSuccess: () => addLog(`${isVideo ? "\u89C6\u9891" : "\u56FE\u50CF"}\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
         onTailError: (e) => {
           const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-          addLog(`\u9519\u8BEF: ${msg}`);
+          addLog(`Error: ${msg}`);
           if (typeof toastr !== "undefined") toastr.error(msg);
         }
       });
@@ -49607,7 +49617,7 @@ async function bananaGenerate(requestData) {
           onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
           onTailError: (e) => {
             const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-            addLog(`\u9519\u8BEF: ${msg}`);
+            addLog(`Error: ${msg}`);
             if (typeof toastr !== "undefined") toastr.error(msg);
           }
         });
@@ -49652,7 +49662,7 @@ async function bananaGenerate(requestData) {
         onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
         onTailError: (e) => {
           const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-          addLog(`\u9519\u8BEF: ${msg}`);
+          addLog(`Error: ${msg}`);
           if (typeof toastr !== "undefined") toastr.error(msg);
         }
       });
@@ -50456,7 +50466,7 @@ async function runninghubgenerate(requestData) {
         onTailSuccess: () => addLog(`[RunningHub] ${isVideo ? "\u89C6\u9891" : "\u56FE\u50CF"}\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
         onTailError: (e) => {
           const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-          addLog(`\u9519\u8BEF: ${msg}`);
+          addLog(`Error: ${msg}`);
           if (typeof toastr !== "undefined") toastr.error(msg);
         }
       });
@@ -57367,8 +57377,7 @@ async function onDeletePreset() {
     toastr.warning("No character profile selected for deletion.");
     return;
   }
-  const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u4EBA\u8BBE\u9884\u8BBE\u300C${presetId}\u300D\u5417\uFF1F
-\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\uFF01`);
+  const confirmed = await stylishConfirm(`Delete persona preset “${presetId}” permanently?`);
   if (!confirmed) return;
   const avatarId = profiles.presets[presetId].avatarId;
   if (avatarId) {
@@ -58416,7 +58425,7 @@ function initSendData(settingsModal) {
           }
         }
         const actionWrapper = $("<div></div>").css({ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 });
-        const eyeIcon = $("<i></i>").addClass("fa fa-eye st-chatu8-entry-view-icon").attr("title", "\u67E5\u770B\u5185\u5BB9").css({ margin: 0 }).on("click", function(e) {
+        const eyeIcon = $("<i></i>").addClass("fa fa-eye st-chatu8-entry-view-icon").attr("title", "View content").css({ margin: 0 }).on("click", function(e) {
           e.stopPropagation();
           showEntryContentModal(displayName, entry.content || "", entry.key || [], isConstant);
         });
@@ -59056,7 +59065,7 @@ function displayTestResult(container, worldBooksData, contextElements) {
           "border-color": "rgba(158, 158, 158, 0.3)",
           "color": "#9e9e9e"
         });
-        $btn.attr("title", "\u70B9\u51FB\u542F\u7528\u6B64\u6761\u76EE");
+        $btn.attr("title", "Click to enable this entry");
         toastr.info(`Entry disabled (World Info: ${worldName})`);
       } else {
         $btn.html("<i class=\"fa-solid fa-ban\"></i> Disabled");
@@ -59065,7 +59074,7 @@ function displayTestResult(container, worldBooksData, contextElements) {
           "border-color": "rgba(255, 152, 0, 0.3)",
           "color": "#ff9800"
         });
-        $btn.attr("title", "\u7981\u7528\u6B64\u6761\u76EE\uFF08\u5F71\u54CD\u53D1\u9001\u6570\u636E\u8BBE\u7F6E\uFF09");
+        $btn.attr("title", "Disable this entry (affects data sent)");
         toastr.success(`Entry enabled (World Info: ${worldName})`);
       }
     } catch (err) {
@@ -59252,10 +59261,10 @@ function updateFloorStatusIndicator(collected) {
   if (dom.floorStatus) {
     if (collected) {
       dom.floorStatus.css("background-color", "#4CAF50");
-      dom.floorStatus.attr("title", "\u5DF2\u6536\u96C6\u697C\u5C42\u5143\u7D20\uFF08\u6A21\u5F0F: " + (floorCollectionMode || "\u672A\u77E5") + "\uFF09");
+      dom.floorStatus.attr("title", "Message elements collected (mode: " + (floorCollectionMode || "\u672A\u77E5") + "\uFF09");
     } else {
       dom.floorStatus.css("background-color", "#999");
-      dom.floorStatus.attr("title", "\u672A\u6536\u96C6\u697C\u5C42\u5143\u7D20");
+      dom.floorStatus.attr("title", "No message elements collected");
     }
   }
 }
@@ -59932,14 +59941,14 @@ ${extraContext}`);
     populatePersonaFields(personaData);
     const charName = personaData.name || personaData["\u89D2\u8272\u540D"] || personaData["\u540D\u5B57"] || "\u65B0\u89D2\u8272";
     const typeLabel = generationType === "user" ? "User \u4EBA\u8BBE" : "\u4EBA\u8BBE";
-    setStatus(statusEl, `\u2705 ${typeLabel}\u751F\u6210\u5B8C\u6210\uFF01`);
-    showToast(`\u2705 ${typeLabel}\u300C${charName}\u300D\u751F\u6210\u5B8C\u6210\uFF0C\u5DF2\u5F55\u5165\u9884\u8BBE`, "success", 5e3);
+    setStatus(statusEl, `\u2705 ${typeLabel}Generation complete!`);
+    showToast(`\u2705 ${typeLabel}\u300C${charName}” generated and saved to presets`, "success", 5e3);
     setTimeout(() => setStatus(statusEl, ""), 3e3);
   } catch (error) {
     console.error("[PersonaGen] \u751F\u6210\u5931\u8D25:", error);
     setStatus(statusEl, `\u274C \u751F\u6210\u5931\u8D25: ${error.message}`);
     const failLabel = generationType === "user" ? "User \u4EBA\u8BBE" : "\u4EBA\u8BBE";
-    showToast(`\u274C ${failLabel}\u751F\u6210\u5931\u8D25: ${error.message}`, "error", 5e3);
+    showToast(`\u274C ${failLabel}Generation failed: ${error.message}`, "error", 5e3);
   } finally {
     if (btnEl) btnEl.disabled = false;
   }
@@ -60182,12 +60191,12 @@ function showTypeSelectionPopup() {
     buttons.style.gap = "8px";
     const characterBtn = document.createElement("button");
     characterBtn.className = "st-chatu8-popup-btn-confirm";
-    characterBtn.innerHTML = "\u{1F3AD} \u89D2\u8272\u4EBA\u8BBE<br><small>\u5305\u542B\u6B21\u5143\u7A7F\u8D8A\u8BBE\u5B9A</small>";
+    characterBtn.innerHTML = "🎭 Character persona<br><small>Includes dimension-travel settings</small>";
     characterBtn.style.padding = "12px";
     buttons.appendChild(characterBtn);
     const userBtn = document.createElement("button");
     userBtn.className = "st-chatu8-popup-btn-confirm";
-    userBtn.innerHTML = "\u{1F464} User \u4EBA\u8BBE<br><small>\u4E0D\u5305\u542B\u7A7F\u8D8A\u8BBE\u5B9A</small>";
+    userBtn.innerHTML = "👤 User persona<br><small>Excludes dimension-travel settings</small>";
     userBtn.style.padding = "12px";
     buttons.appendChild(userBtn);
     const cancelBtn = document.createElement("button");
@@ -60949,9 +60958,8 @@ async function onDeletePreset2() {
     toastr.warning("No user preset selected for deletion.");
     return;
   }
-  const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u9884\u8BBE\u300C${presetId}\u300D\u5417\uFF1F
-\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\uFF01
-\u6CE8\u610F\uFF1A\u5982\u679C\u4EBA\u8BBE\u7BA1\u7406\u4E5F\u5728\u4F7F\u7528\u6B64\u9884\u8BBE\uFF0C\u8BE5\u9884\u8BBE\u4E5F\u4F1A\u88AB\u5220\u9664\u3002`);
+  const confirmed = await stylishConfirm(`Delete preset “${presetId}” permanently?
+This also removes it from persona management if shared there.`);
   if (!confirmed) return;
   const avatarId = profiles.presets[presetId].avatarId;
   if (avatarId) {
@@ -63030,7 +63038,7 @@ async function ensureMic() {
   if (persistentStream && persistentStream.active) return true;
   if (typeof window !== "undefined" && window.isSecureContext === false) {
     log2("\u274C \u975E\u5B89\u5168\u4E0A\u4E0B\u6587\uFF08\u9700\u8981 HTTPS\uFF09\uFF0C\u65E0\u6CD5\u4F7F\u7528\u9EA6\u514B\u98CE");
-    showMobileToast("\u9700\u8981 HTTPS \u624D\u80FD\u4F7F\u7528\u9EA6\u514B\u98CE\uFF0C\u8BF7\u786E\u4FDD\u901A\u8FC7 HTTPS \u8BBF\u95EE");
+    showMobileToast("Microphone access requires HTTPS. Open this page over HTTPS.");
     eventSource41.emit(eventNames.ASR_ERROR, {
       message: "\u9700\u8981 HTTPS \u624D\u80FD\u4F7F\u7528\u9EA6\u514B\u98CE\uFF0C\u8BF7\u786E\u4FDD\u901A\u8FC7 HTTPS \u8BBF\u95EE",
       code: "INSECURE_CONTEXT"
@@ -63039,7 +63047,7 @@ async function ensureMic() {
   }
   if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
     log2("\u274C \u6D4F\u89C8\u5668\u4E0D\u652F\u6301 mediaDevices.getUserMedia\uFF08\u53EF\u80FD\u4E3A\u975E\u5B89\u5168\u4E0A\u4E0B\u6587\u6216\u65E7\u7248\u6D4F\u89C8\u5668\uFF09");
-    showMobileToast("\u5F53\u524D\u6D4F\u89C8\u5668\u6216\u73AF\u5883\u4E0D\u652F\u6301\u9EA6\u514B\u98CE\uFF0C\u8BF7\u4F7F\u7528 HTTPS \u8BBF\u95EE");
+    showMobileToast("Microphone access is unavailable in this browser or environment. Open the page over HTTPS.");
     eventSource41.emit(eventNames.ASR_ERROR, {
       message: "\u5F53\u524D\u6D4F\u89C8\u5668\u4E0D\u652F\u6301\u9EA6\u514B\u98CE\u529F\u80FD\uFF0C\u8BF7\u786E\u8BA4\u4F7F\u7528 HTTPS \u8BBF\u95EE\u4E14\u6D4F\u89C8\u5668\u7248\u672C\u652F\u6301",
       code: "NOT_SUPPORTED"
@@ -63063,7 +63071,7 @@ async function ensureMic() {
     log2("\u2705 \u9EA6\u514B\u98CE\u6743\u9650\u5DF2\u83B7\u53D6");
   } catch (e) {
     log2("\u274C \u9EA6\u514B\u98CE\u6743\u9650\u88AB\u62D2: " + e.message);
-    showMobileToast("\u9EA6\u514B\u98CE\u6743\u9650\u88AB\u62D2\u7EDD\uFF0C\u8BF7\u5728\u6D4F\u89C8\u5668\u8BBE\u7F6E\u4E2D\u5141\u8BB8");
+    showMobileToast("Microphone permission denied. Allow access in your browser settings.");
     eventSource41.emit(eventNames.ASR_ERROR, {
       message: "\u9EA6\u514B\u98CE\u6743\u9650\u88AB\u62D2\u7EDD\uFF0C\u8BF7\u5141\u8BB8\u540E\u91CD\u8BD5",
       code: "MIC_DENIED"
@@ -74671,16 +74679,16 @@ function updateTTSButtonIcon(messageIndex, newState) {
     switch (newState) {
       case "loading":
         $icon.addClass("fa-spinner fa-spin");
-        $btn.attr("title", "\u6B63\u5728\u8BF7\u6C42\u8BED\u97F3...");
+        $btn.attr("title", "Requesting speech...");
         break;
       case "playing":
         $icon.addClass("fa-stop");
-        $btn.attr("title", "\u505C\u6B62\u6717\u8BFB");
+        $btn.attr("title", "Stop reading");
         break;
       case "idle":
       default:
         $icon.addClass("fa-volume-up");
-        $btn.attr("title", "\u6717\u8BFB\u6B64\u56DE\u590D");
+        $btn.attr("title", "Read this reply");
         break;
     }
   });
@@ -75479,11 +75487,11 @@ function updateSendButtonState() {
   if (isAiGenerating) {
     dom.sendBtn.html('<i class="fa-solid fa-stop"></i>');
     dom.sendBtn.addClass("generating");
-    dom.sendBtn.attr("title", "\u505C\u6B62\u751F\u6210");
+    dom.sendBtn.attr("title", "Stop generation");
   } else {
     dom.sendBtn.html('<i class="fa-solid fa-paper-plane"></i>');
     dom.sendBtn.removeClass("generating");
-    dom.sendBtn.attr("title", "\u53D1\u9001");
+    dom.sendBtn.attr("title", "Send");
   }
 }
 function adjustInputHeight() {
@@ -76091,7 +76099,7 @@ function _updateIndexEntry(chatData) {
   const idx = chatIndex.chatList.findIndex((e) => e.id === chatData.id);
   const entry = {
     id: chatData.id,
-    title: chatData.title || "\u65B0\u5BF9\u8BDD",
+    title: chatData.title || "New conversation",
     updatedAt: chatData.updatedAt || Date.now(),
     messageCount: (chatData.messages || []).length
   };
@@ -78781,10 +78789,10 @@ async function handleGenerateSingle(groupIndex, group) {
   const mgr = getSummaryManager();
   if (!mgr) return;
   if (group.roundCount < ROUNDS_PER_GROUP) {
-    showStatus2(`\u7B2C ${groupIndex + 1} \u7EC4\u53EA\u6709 ${group.roundCount} \u8F6E\uFF0C\u4E0D\u8DB3 ${ROUNDS_PER_GROUP} \u8F6E\uFF0C\u65E0\u6CD5\u751F\u6210\u603B\u7ED3`, "warning");
+    showStatus2(`Group ${groupIndex + 1} has only ${group.roundCount} turns; requires ${ROUNDS_PER_GROUP} turns to generate a summary`, "warning");
     return;
   }
-  showStatus2("\u6B63\u5728\u751F\u6210\u603B\u7ED3...", "info");
+  showStatus2("Generating summary...", "info");
   const $groupCard = dom.summaryManager.find(`[data-group-index="${groupIndex}"]`);
   const $loadingEl = $("<div class=\"summary-card-loading\"><i class=\"fa-solid fa-spinner\"></i><span>Generating...</span></div>");
   $groupCard.find(".summary-card-actions").hide();
@@ -78809,13 +78817,13 @@ async function handleGenerateSingle(groupIndex, group) {
         type: "direct"
       });
       saveSummaryData();
-      showStatus2("\u603B\u7ED3\u751F\u6210\u5B8C\u6210", "success");
+      showStatus2("Summary generated", "success");
     } else {
-      showStatus2("\u603B\u7ED3\u751F\u6210\u5931\u8D25\uFF1A\u8FD4\u56DE\u5185\u5BB9\u4E3A\u7A7A", "error");
+      showStatus2("Summary generation failed: empty response", "error");
     }
   } catch (err) {
     console.error("[Summary] \u751F\u6210\u603B\u7ED3\u5931\u8D25:", err);
-    showStatus2("\u751F\u6210\u5931\u8D25: " + err.message, "error");
+    showStatus2("Generation failed: " + err.message, "error");
   }
   renderPanel();
 }
@@ -78829,7 +78837,7 @@ async function handleGenerateSelected() {
     const shortGroups = indices.filter((idx) => groups[idx] && groups[idx].roundCount < ROUNDS_PER_GROUP);
     if (shortGroups.length > 0) {
       const names = shortGroups.map((idx) => `\u7B2C${idx + 1}\u7EC4(${groups[idx].roundCount}\u8F6E)`).join("\u3001");
-      showStatus2(`${names} \u4E0D\u8DB3 ${ROUNDS_PER_GROUP} \u8F6E\uFF0C\u5DF2\u81EA\u52A8\u8DF3\u8FC7`, "warning");
+      showStatus2(`${names} has fewer than ${ROUNDS_PER_GROUP} turns and was skipped`, "warning");
     }
     const validIndices = indices.filter((idx) => groups[idx] && groups[idx].roundCount >= ROUNDS_PER_GROUP);
     const allPairs = [];
@@ -78844,10 +78852,10 @@ async function handleGenerateSelected() {
       sourceGroupStarts.push({ start: group.start, end: group.end });
     }
     if (allPairs.length === 0) {
-      showStatus2("\u9009\u4E2D\u7684\u6D88\u606F\u7EC4\u65E0\u6709\u6548\u6D88\u606F\uFF08\u53EF\u80FD\u5168\u90E8\u4E0D\u8DB3\u8F6E\u6570\uFF09", "warning");
+      showStatus2("No eligible messages in the selected groups. Check the minimum turn count.", "warning");
       return;
     }
-    showStatus2(`\u6B63\u5728\u4E3A ${indices.length} \u4E2A\u6D88\u606F\u7EC4\u751F\u6210\u5408\u5E76\u603B\u7ED3\uFF08\u5171 ${allPairs.length} \u8F6E\uFF09...`, "info");
+    showStatus2(`Generating a merged summary for ${indices.length} message groups (${allPairs.length} turns)...`, "info");
     try {
       const summaryText = await generateSummary({
         messagePairs: allPairs,
@@ -78864,23 +78872,23 @@ async function handleGenerateSelected() {
           newSummary.sourceGroups = sourceGroupStarts;
         }
         saveSummaryData();
-        showStatus2("\u5408\u5E76\u603B\u7ED3\u751F\u6210\u5B8C\u6210", "success");
+        showStatus2("Merged summary generated", "success");
       } else {
-        showStatus2("\u603B\u7ED3\u751F\u6210\u5931\u8D25\uFF1A\u8FD4\u56DE\u5185\u5BB9\u4E3A\u7A7A", "error");
+        showStatus2("Summary generation failed: empty response", "error");
       }
     } catch (err) {
       console.error("[Summary] \u751F\u6210\u5408\u5E76\u603B\u7ED3\u5931\u8D25:", err);
-      showStatus2("\u751F\u6210\u5931\u8D25: " + err.message, "error");
+      showStatus2("Generation failed: " + err.message, "error");
     }
     selectedGroupIndices.clear();
     renderPanel();
     return;
   }
   if (selectedSummaryIds.size < 2) {
-    showStatus2("\u8BF7\u81F3\u5C11\u9009\u62E9 2 \u4E2A\u603B\u7ED3\u8FDB\u884C\u5408\u5E76", "warning");
+    showStatus2("Select at least two summaries to merge", "warning");
     return;
   }
-  showStatus2("\u6B63\u5728\u751F\u6210\u5408\u5E76\u603B\u7ED3...", "info");
+  showStatus2("Generating merged summary...", "info");
   try {
     const existingContents = [];
     const sourceIds = [];
@@ -78905,14 +78913,14 @@ async function handleGenerateSelected() {
         type: "merged"
       });
       saveSummaryData();
-      showStatus2("\u5408\u5E76\u603B\u7ED3\u751F\u6210\u5B8C\u6210", "success");
+      showStatus2("Merged summary generated", "success");
       selectedSummaryIds.clear();
     } else {
-      showStatus2("\u5408\u5E76\u603B\u7ED3\u751F\u6210\u5931\u8D25\uFF1A\u8FD4\u56DE\u5185\u5BB9\u4E3A\u7A7A", "error");
+      showStatus2("Merged summary generation failed: empty response", "error");
     }
   } catch (err) {
     console.error("[Summary] \u751F\u6210\u5408\u5E76\u603B\u7ED3\u5931\u8D25:", err);
-    showStatus2("\u751F\u6210\u5931\u8D25: " + err.message, "error");
+    showStatus2("Generation failed: " + err.message, "error");
   }
   renderPanel();
 }
@@ -79568,10 +79576,10 @@ function refreshSettingsPanel() {
   dom.asrMicBtn.toggle(asrEnabled);
   const $micIcon = dom.asrMicBtn.find("i");
   if (asrEnabled && isConvModeSetting) {
-    dom.asrMicBtn.attr("title", "\u591A\u8F6E\u5BF9\u8BDD\uFF08\u70B9\u51FB\u5F00\u59CB/\u505C\u6B62\uFF09");
+    dom.asrMicBtn.attr("title", "Conversation voice input (click to start/stop)");
     $micIcon.removeClass("fa-microphone fa-stop fa-spinner fa-spin").addClass("fa-comments");
   } else {
-    dom.asrMicBtn.attr("title", "\u8BED\u97F3\u8F93\u5165\uFF08\u5355\u6B21\uFF09");
+    dom.asrMicBtn.attr("title", "Voice input (single turn)");
     $micIcon.removeClass("fa-comments fa-stop fa-spinner fa-spin").addClass("fa-microphone");
   }
   if (isConversationMode()) {
@@ -79846,10 +79854,10 @@ function initDialogEvents() {
     }
     const $icon = asrMicBtn.find("i");
     if (isConv) {
-      asrMicBtn.attr("title", "\u591A\u8F6E\u5BF9\u8BDD\uFF08\u70B9\u51FB\u5F00\u59CB/\u505C\u6B62\uFF09");
+      asrMicBtn.attr("title", "Conversation voice input (click to start/stop)");
       $icon.removeClass("fa-microphone fa-stop fa-spinner fa-spin").addClass("fa-comments");
     } else {
-      asrMicBtn.attr("title", "\u8BED\u97F3\u8F93\u5165\uFF08\u5355\u6B21\uFF09");
+      asrMicBtn.attr("title", "Voice input (single turn)");
       $icon.removeClass("fa-comments fa-stop fa-spinner fa-spin").addClass("fa-microphone");
     }
   });
@@ -80779,7 +80787,7 @@ async function sdGenerate(requestData) {
           onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
           onTailError: (e) => {
             const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-            addLog(`\u9519\u8BEF: ${msg}`);
+            addLog(`Error: ${msg}`);
             if (typeof toastr !== "undefined") toastr.error(msg);
           }
         });
@@ -80821,7 +80829,7 @@ async function sdGenerate(requestData) {
         onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
         onTailError: (e) => {
           const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-          addLog(`\u9519\u8BEF: ${msg}`);
+          addLog(`Error: ${msg}`);
           if (typeof toastr !== "undefined") toastr.error(msg);
         }
       });
@@ -81405,13 +81413,13 @@ function showVibeGroupEditorDialog() {
     const currentGroupId = groupSelect.value;
     const currentGroup = vibeGroups[currentGroupId];
     if (!currentGroup) {
-      showStatus(statusDiv, "\u9519\u8BEF: \u672A\u9009\u62E9\u7EC4\u3002\u8BF7\u5148\u9009\u62E9\u6216\u521B\u5EFA\u4E00\u4E2A\u7EC4\u3002", "error");
+      showStatus(statusDiv, "Select or create a group first.", "error");
       console.error("[VibeGroup] No group selected when attempting to add Vibe");
       return;
     }
     const vibes = currentGroup.vibes || [];
     if (vibes.length >= 4) {
-      showStatus(statusDiv, "\u5DF2\u8FBE\u5230\u6700\u5927\u6570\u91CF (4\u4E2A)\u3002\u6BCF\u4E2A\u7EC4\u6700\u591A\u53EF\u5305\u542B 4 \u4E2A Vibe\u3002", "error");
+      showStatus(statusDiv, "Limit reached. Each group supports up to four Vibes.", "error");
       console.warn("[VibeGroup] Maximum Vibe limit reached for group:", currentGroupId);
       return;
     }
@@ -81419,7 +81427,7 @@ function showVibeGroupEditorDialog() {
       showVibeVisualSelector((vibeDataId) => {
         try {
           if (!vibeDataId || typeof vibeDataId !== "string") {
-            showStatus(statusDiv, "\u9519\u8BEF: \u65E0\u6548\u7684 Vibe \u6570\u636E ID", "error");
+            showStatus(statusDiv, "Invalid Vibe data ID", "error");
             console.error("[VibeGroup] Invalid vibeDataId received:", vibeDataId);
             return;
           }
@@ -81440,11 +81448,11 @@ function showVibeGroupEditorDialog() {
               timestamp: (/* @__PURE__ */ new Date()).toISOString(),
               stack: error.stack
             });
-            showStatus(statusDiv, `\u9519\u8BEF: \u4FDD\u5B58\u8BBE\u7F6E\u5931\u8D25 - ${error.message}`, "error");
+            showStatus(statusDiv, `Failed to save settings: ${error.message}`, "error");
             return;
           }
           renderVibeSlots(slotsContainer, groupSelect, addVibeBtn);
-          showStatus(statusDiv, "Vibe \u5DF2\u6210\u529F\u6DFB\u52A0\u5230\u7EC4", "success");
+          showStatus(statusDiv, "Vibe added to group", "success");
           console.log("[VibeGroup] Successfully added Vibe to group:", currentGroupId, vibeDataId);
         } catch (error) {
           console.error("[VibeGroup] Error adding Vibe to group:", {
@@ -81454,7 +81462,7 @@ function showVibeGroupEditorDialog() {
             timestamp: (/* @__PURE__ */ new Date()).toISOString(),
             stack: error.stack
           });
-          showStatus(statusDiv, `\u9519\u8BEF: \u6DFB\u52A0 Vibe \u5931\u8D25 - ${error.message}`, "error");
+          showStatus(statusDiv, `Failed to add Vibe: ${error.message}`, "error");
         }
       });
     } catch (error) {
@@ -81464,20 +81472,20 @@ function showVibeGroupEditorDialog() {
         timestamp: (/* @__PURE__ */ new Date()).toISOString(),
         stack: error.stack
       });
-      showStatus(statusDiv, `\u9519\u8BEF: \u65E0\u6CD5\u6253\u5F00 Vibe \u9009\u62E9\u5668 - ${error.message}`, "error");
+      showStatus(statusDiv, `Failed to open Vibe selector: ${error.message}`, "error");
     }
   };
   exportCurrentBtn.onclick = async () => {
     const currentGroupId = groupSelect.value;
     if (!currentGroupId) {
-      showStatus(statusDiv, "\u9519\u8BEF: \u672A\u9009\u62E9\u7EC4\u3002\u8BF7\u5148\u9009\u62E9\u8981\u5BFC\u51FA\u7684\u7EC4\u3002", "error");
+      showStatus(statusDiv, "Select a group to export first.", "error");
       console.error("[VibeGroup] No group selected for export");
       return;
     }
     try {
-      showStatus(statusDiv, "\u6B63\u5728\u5BFC\u51FA...", "info");
+      showStatus(statusDiv, "Exporting...", "info");
       await exportVibeGroup(currentGroupId);
-      showStatus(statusDiv, `\u5DF2\u6210\u529F\u5BFC\u51FA\u7EC4 "${currentGroupId}"`, "success");
+      showStatus(statusDiv, `Exported group "${currentGroupId}"`, "success");
       console.log("[VibeGroup] Successfully exported group:", currentGroupId);
     } catch (error) {
       const errorMessage = error.message || "\u672A\u77E5\u9519\u8BEF";
@@ -81488,7 +81496,7 @@ function showVibeGroupEditorDialog() {
         timestamp: (/* @__PURE__ */ new Date()).toISOString(),
         stack: error.stack
       });
-      showStatus(statusDiv, `\u5BFC\u51FA\u5931\u8D25: ${errorMessage}\u3002\u8BF7\u68C0\u67E5\u63A7\u5236\u53F0\u4EE5\u83B7\u53D6\u8BE6\u7EC6\u4FE1\u606F\u3002`, "error");
+      showStatus(statusDiv, `Export failed: ${errorMessage}. Check the console for details.`, "error");
     }
   };
   exportAllBtn.onclick = async () => {
@@ -81496,14 +81504,14 @@ function showVibeGroupEditorDialog() {
     const vibeGroups = settings4.vibeGroups || {};
     const groupCount = Object.keys(vibeGroups).length;
     if (groupCount === 0) {
-      showStatus(statusDiv, "\u9519\u8BEF: \u6CA1\u6709\u53EF\u5BFC\u51FA\u7684\u7EC4\u3002\u8BF7\u5148\u521B\u5EFA\u81F3\u5C11\u4E00\u4E2A\u7EC4\u3002", "error");
+      showStatus(statusDiv, "Create a group before exporting.", "error");
       console.warn("[VibeGroup] No groups available for export");
       return;
     }
     try {
-      showStatus(statusDiv, `\u6B63\u5728\u5BFC\u51FA ${groupCount} \u4E2A\u7EC4...`, "info");
+      showStatus(statusDiv, `Exporting ${groupCount} groups...`, "info");
       await exportAllVibeGroups();
-      showStatus(statusDiv, `\u5DF2\u6210\u529F\u5BFC\u51FA\u5168\u90E8 ${groupCount} \u4E2A\u7EC4`, "success");
+      showStatus(statusDiv, `Exported all ${groupCount} groups`, "success");
       console.log("[VibeGroup] Successfully exported all groups:", groupCount);
     } catch (error) {
       const errorMessage = error.message || "\u672A\u77E5\u9519\u8BEF";
@@ -81514,7 +81522,7 @@ function showVibeGroupEditorDialog() {
         timestamp: (/* @__PURE__ */ new Date()).toISOString(),
         stack: error.stack
       });
-      showStatus(statusDiv, `\u5BFC\u51FA\u5931\u8D25: ${errorMessage}\u3002\u8BF7\u68C0\u67E5\u63A7\u5236\u53F0\u4EE5\u83B7\u53D6\u8BE6\u7EC6\u4FE1\u606F\u3002`, "error");
+      showStatus(statusDiv, `Export failed: ${errorMessage}. Check the console for details.`, "error");
     }
   };
   importBtn.onclick = () => {
@@ -81528,7 +81536,7 @@ function showVibeGroupEditorDialog() {
         return;
       }
       try {
-        showStatus(statusDiv, "\u6B63\u5728\u5BFC\u5165...", "info");
+        showStatus(statusDiv, "Importing...", "info");
         const fileContent = await readFileAsText(file);
         const result = await importVibeGroup(fileContent);
         if (result.success) {
@@ -81622,11 +81630,11 @@ function createNewGroup(selectElement, statusDiv, slotsContainer, addVibeBtn) {
   }
   const trimmedName = groupName.trim();
   if (!trimmedName) {
-    showStatus(statusDiv, "\u7EC4\u540D\u4E0D\u80FD\u4E3A\u7A7A", "error");
+    showStatus(statusDiv, "Group name cannot be empty", "error");
     return;
   }
   if (vibeGroups[trimmedName]) {
-    showStatus(statusDiv, `\u7EC4\u540D "${trimmedName}" \u5DF2\u5B58\u5728`, "error");
+    showStatus(statusDiv, `Group "${trimmedName}" already exists`, "error");
     return;
   }
   vibeGroups[trimmedName] = {
@@ -81645,12 +81653,12 @@ function createNewGroup(selectElement, statusDiv, slotsContainer, addVibeBtn) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showStatus(statusDiv, `\u521B\u5EFA\u6210\u529F\u4F46\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+    showStatus(statusDiv, `Created, but saving failed: ${error.message}`, "error");
     return;
   }
   loadGroupPresetList(selectElement);
   renderVibeSlots(slotsContainer, selectElement, addVibeBtn);
-  showStatus(statusDiv, `\u5DF2\u521B\u5EFA\u65B0\u7EC4 "${trimmedName}"`, "success");
+  showStatus(statusDiv, `Created group "${trimmedName}"`, "success");
   console.log("[VibeGroup] Created new group:", trimmedName);
 }
 function saveCurrentGroup(selectElement, statusDiv) {
@@ -81658,12 +81666,12 @@ function saveCurrentGroup(selectElement, statusDiv) {
   const vibeGroups = settings3.vibeGroups || {};
   const currentGroupId = selectElement.value;
   if (!currentGroupId) {
-    showStatus(statusDiv, "\u672A\u9009\u62E9\u7EC4", "error");
+    showStatus(statusDiv, "No group selected", "error");
     return;
   }
   const currentGroup = vibeGroups[currentGroupId];
   if (!currentGroup) {
-    showStatus(statusDiv, "\u5F53\u524D\u7EC4\u4E0D\u5B58\u5728", "error");
+    showStatus(statusDiv, "The selected group no longer exists", "error");
     return;
   }
   currentGroup.updatedAt = Date.now();
@@ -81678,10 +81686,10 @@ function saveCurrentGroup(selectElement, statusDiv) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showStatus(statusDiv, `\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+    showStatus(statusDiv, `Save failed: ${error.message}`, "error");
     return;
   }
-  showStatus(statusDiv, `\u5DF2\u4FDD\u5B58\u7EC4 "${currentGroupId}"`, "success");
+  showStatus(statusDiv, `Saved group "${currentGroupId}"`, "success");
   console.log("[VibeGroup] Saved group:", currentGroupId);
 }
 function deleteCurrentGroup(selectElement, statusDiv) {
@@ -81689,11 +81697,11 @@ function deleteCurrentGroup(selectElement, statusDiv) {
   const vibeGroups = settings3.vibeGroups || {};
   const currentGroupId = selectElement.value;
   if (!currentGroupId) {
-    showStatus(statusDiv, "\u672A\u9009\u62E9\u7EC4", "error");
+    showStatus(statusDiv, "No group selected", "error");
     return;
   }
   if (currentGroupId === "\u9ED8\u8BA4\u7EC4" && Object.keys(vibeGroups).length === 1) {
-    showStatus(statusDiv, "\u4E0D\u80FD\u5220\u9664\u552F\u4E00\u7684\u7EC4", "error");
+    showStatus(statusDiv, "Keep at least one group", "error");
     return;
   }
   const confirmed = confirm(`Permanently delete group \"${currentGroupId}\"?`);
@@ -81725,7 +81733,7 @@ function deleteCurrentGroup(selectElement, statusDiv) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showStatus(statusDiv, `\u5220\u9664\u6210\u529F\u4F46\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+    showStatus(statusDiv, `Deleted, but saving failed: ${error.message}`, "error");
   }
   loadGroupPresetList(selectElement);
   const slotsContainer = document.getElementById("vibe-group-slots");
@@ -81733,7 +81741,7 @@ function deleteCurrentGroup(selectElement, statusDiv) {
   if (slotsContainer && addVibeBtn) {
     renderVibeSlots(slotsContainer, selectElement, addVibeBtn);
   }
-  showStatus(statusDiv, `\u5DF2\u5220\u9664\u7EC4 "${currentGroupId}"`, "success");
+  showStatus(statusDiv, `Deleted group "${currentGroupId}"`, "success");
   console.log("[VibeGroup] Deleted group:", currentGroupId);
 }
 function showStatus(statusDiv, message, type = "info") {
@@ -83220,7 +83228,7 @@ async function showVibeGroupVisualSelector(onSelect) {
         } else if (error.name === "NotFoundError") {
           errorMessage = "\u56FE\u50CF\u672A\u627E\u5230";
         } else if (error.name === "InvalidStateError") {
-          errorMessage = "\u6570\u636E\u5E93\u9519\u8BEF";
+          errorMessage = "Database error";
         }
         imageContainer.innerHTML = `
                     <div class="st-chatu8-preset-card-error">
@@ -84657,7 +84665,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
   change = await stripChineseAnnotations(change);
   console.log("\u6B63\u5728\u5904\u7406\u4E2D\u6587\u6CE8\u91CA\u5B8C\u6210...", link);
   if (extension_settings62[extensionName].novelaiApi == "000000") {
-    addLog("\u8BF7\u586B\u5199 NovelAI API Key");
+    addLog("Enter your NovelAI API key");
     toastr.error("Enter a NovelAI API key");
     taskQueue.completeTask(taskId, false);
     currentTaskId = null;
@@ -85078,7 +85086,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
   try {
     validateNovelAIPayload(preset_data, actualModel);
   } catch (validationError) {
-    addLog(`[\u9A8C\u8BC1\u5931\u8D25] ${validationError.message}`);
+    addLog(`[Validation failed] ${validationError.message}`);
     toastr.error(`Payload validation failed: ${validationError.message}`, "NovelAI generation error");
     taskQueue.completeTask(taskId, false);
     currentTaskId = null;
@@ -85590,7 +85598,7 @@ async function novelaigenerate(requestData) {
             onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
             onTailError: (e) => {
               const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-              addLog(`\u9519\u8BEF: ${msg}`);
+              addLog(`Error: ${msg}`);
               if (typeof toastr !== "undefined") toastr.error(msg);
             }
           });
@@ -85630,7 +85638,7 @@ async function novelaigenerate(requestData) {
             onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
             onTailError: (e) => {
               const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-              addLog(`\u9519\u8BEF: ${msg}`);
+              addLog(`Error: ${msg}`);
               if (typeof toastr !== "undefined") toastr.error(msg);
             }
           });
@@ -85690,7 +85698,7 @@ async function novelaigenerate(requestData) {
           onTailSuccess: () => addLog(`\u56FE\u50CF\u5DF2\u5B58\u5165\u6570\u636E\u5E93 for prompt: ${prompt2}`),
           onTailError: (e) => {
             const msg = `\u56FE\u7247\u5DF2\u663E\u793A\uFF0C\u4F46\u4FDD\u5B58\u5230\u6570\u636E\u5E93\u5931\u8D25: ${e?.message || e}`;
-            addLog(`\u9519\u8BEF: ${msg}`);
+            addLog(`Error: ${msg}`);
             if (typeof toastr !== "undefined") toastr.error(msg);
           }
         });
@@ -86436,7 +86444,7 @@ function bindEvents($body, $backdrop, ctx) {
     const ids = $body.find('[data-list="unref"] .st-chatu8-import-checkbox:checked').map((_, el) => $(el).data("unref-id")).get();
     if (!ids.length) return;
     const ok = await stylishConfirm(
-      `\u786E\u8BA4\u5220\u9664\u9009\u4E2D\u7684 ${ids.length} \u4E2A\u65E0\u4E3B\u5E9F\u5F03\u56FE\u7247\uFF1F\u5C06\u5F7B\u5E95\u4ECE\u670D\u52A1\u5668\u78C1\u76D8\u3001\u6CE8\u518C\u8868\u548C\u672C\u5730\u6570\u636E\u5E93\u4E2D\u6E05\u9664\uFF0C\u5220\u9664\u540E\u65E0\u6CD5\u6062\u590D\u3002`
+      `Permanently delete the selected ${ids.length} orphaned images from server storage, the registry and the local database?`
     );
     if (!ok) return;
     await runCleanup($body, $backdrop, { unreferencedIds: ids });
@@ -86446,7 +86454,7 @@ function bindEvents($body, $backdrop, ctx) {
     if (!files.length) return;
     const bytes = files.reduce((s, f) => s + (ctx.sizes[f] || 0), 0);
     const ok = await stylishConfirm(
-      `\u786E\u8BA4\u5220\u9664 ${files.length} \u4E2A\u6587\u4EF6\uFF1F\u5171 ${fmtMB2(bytes)}\uFF0C\u5220\u9664\u540E\u65E0\u6CD5\u6062\u590D\u3002`
+      `Delete ${files.length} files totaling ${fmtMB2(bytes)}? This is permanent.`
     );
     if (!ok) return;
     await runCleanup($body, $backdrop, { orphanFiles: files });
@@ -86455,7 +86463,7 @@ function bindEvents($body, $backdrop, ctx) {
     const keys = $body.find('[data-list="dead"] .st-chatu8-import-checkbox:checked').map((_, el) => $(el).data("key")).get();
     if (!keys.length) return;
     const ok = await stylishConfirm(
-      `\u786E\u8BA4\u79FB\u9664 ${keys.length} \u6761\u5931\u6548\u6CE8\u518C\u8868\u8BB0\u5F55\uFF1F\u5BF9\u5E94\u6587\u4EF6\u5DF2\u4E0D\u5B58\u5728\uFF0C\u6B64\u64CD\u4F5C\u53EA\u6E05\u7406\u8BB0\u5F55\u3002`
+      `Remove ${keys.length} stale registry entries? Their files are already missing.`
     );
     if (!ok) return;
     await runCleanup($body, $backdrop, { deadKeys: keys });
@@ -86482,7 +86490,7 @@ async function runCleanup($body, $backdrop, payload) {
     });
   } catch (e) {
     console.error("[ConfigDB \u6E05\u7406] \u5931\u8D25:", e);
-    showToast(`\u6E05\u7406\u5931\u8D25: ${e.message}`, "error");
+    showToast(`Cleanup failed: ${e.message}`, "error");
     $buttons.prop("disabled", false);
     $progress.hide();
     return;
@@ -86496,9 +86504,9 @@ async function runCleanup($body, $backdrop, payload) {
   if (result.deletedFiles.length) msgs.push(`\u5220\u9664\u5B64\u513F\u6587\u4EF6 ${result.deletedFiles.length} \u4E2A`);
   if (result.deletedKeys.length) msgs.push(`\u79FB\u9664\u8BB0\u5F55 ${result.deletedKeys.length} \u6761`);
   if (result.skipped.length) msgs.push(`\u8DF3\u8FC7 ${result.skipped.length} \u4E2A\uFF08\u4ECD\u88AB\u5F15\u7528\uFF09`);
-  if (result.errors.length) msgs.push(`\u5931\u8D25 ${result.errors.length} \u4E2A`);
+  if (result.errors.length) msgs.push(`Failed: ${result.errors.length} items`);
   showToast(
-    msgs.length ? `\u6E05\u7406\u5B8C\u6210\uFF1A${msgs.join("\uFF0C")}` : "\u6CA1\u6709\u5185\u5BB9\u88AB\u6E05\u7406",
+    msgs.length ? `Cleanup complete: ${msgs.join("\uFF0C")}` : "Nothing to clean up",
     result.errors.length ? "warning" : "success"
   );
   await renderContent($body, $backdrop);
@@ -86565,7 +86573,7 @@ function prompt_replace_change(mode) {
   const text = document.getElementById("prompt_replace_text" + suffix).value;
   const isDirty = text !== (currentPreset.text ?? "");
   if (isDirty) {
-    stylishConfirm("\u60A8\u6709\u672A\u4FDD\u5B58\u7684\u66FF\u6362\u89C4\u5219\u3002\u8981\u653E\u5F03\u8FD9\u4E9B\u66F4\u6539\u5E76\u5207\u6362\u9884\u8BBE\u5417\uFF1F").then((confirmed) => {
+    stylishConfirm("You have unsaved replacement rules. Discard them and switch presets?").then((confirmed) => {
       if (confirmed) {
         settings3.prompt_replace_id = newPresetId;
         saveSettingsDebounced38();
@@ -86656,7 +86664,7 @@ function prompt_replace_update(mode) {
     alert("No active replacement rules. Use Save as first.");
     return;
   }
-  stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D\u66FF\u6362\u89C4\u5219 "${presetName}" \u5417\uFF1F`).then((confirmed) => {
+  stylishConfirm(`Overwrite replacement rules "${presetName}"?`).then((confirmed) => {
     if (confirmed) {
       const text = document.getElementById("prompt_replace_text" + suffix).value;
       settings3.prompt_replace[presetName] = { "text": text };
@@ -86676,7 +86684,7 @@ function prompt_replace_delete(mode) {
     alert("Cannot delete default configuration");
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664\u8BE5\u66FF\u6362\u89C4\u5219").then((result) => {
+  stylishConfirm("Delete these replacement rules").then((result) => {
     if (result) {
       Reflect.deleteProperty(settings3.prompt_replace, valueToDelete);
       settings3.prompt_replace_id = "\u9ED8\u8BA4";
@@ -87334,7 +87342,7 @@ async function handleExportLog() {
   URL.revokeObjectURL(url);
 }
 function handleClearLog() {
-  stylishConfirm("\u786E\u5B9A\u8981\u6E05\u7A7A\u6240\u6709\u65E5\u5FD7\u5417\uFF1F\u6B64\u64CD\u4F5C\u5C06\u5F7B\u5E95\u5220\u9664\u6240\u6709\u5386\u53F2\u65E5\u5FD7\uFF0C\u4E0D\u53EF\u64A4\u9500\u3002").then((confirmed) => {
+  stylishConfirm("Permanently delete all log history?").then((confirmed) => {
     if (confirmed) {
       clearAllLogs();
       saveSettingsDebounced39();
@@ -87661,7 +87669,7 @@ function handlePeriodChange(period) {
   renderChart(period);
 }
 function handleResetGenStats() {
-  stylishConfirm("\u786E\u5B9A\u8981\u91CD\u7F6E\u6240\u6709\u751F\u56FE\u7EDF\u8BA1\u6570\u636E\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002").then((confirmed) => {
+  stylishConfirm("Permanently reset all image generation statistics?").then((confirmed) => {
     if (confirmed) {
       resetImageGenStats();
       _currentPeriod = "day";
@@ -87763,7 +87771,7 @@ function handleDownloadDebugLog() {
   toastr.success("Debug log downloaded");
 }
 function handleClearDebugLog() {
-  stylishConfirm("\u786E\u5B9A\u8981\u6E05\u7A7A\u8C03\u8BD5\u65E5\u5FD7\u5417\uFF1F").then((confirmed) => {
+  stylishConfirm("Clear debug logs?").then((confirmed) => {
     if (confirmed) {
       clearDebugLog();
       updateDebugStatus();
@@ -87850,7 +87858,7 @@ async function handleDownloadErrors() {
   toastr.success("Diagnostic bundle downloaded (errors and last 12 hours of logs)");
 }
 function handleClearErrors() {
-  stylishConfirm("\u786E\u5B9A\u8981\u6E05\u7A7A\u6240\u6709\u9519\u8BEF\u8BB0\u5F55\u5417\uFF1F").then((confirmed) => {
+  stylishConfirm("Clear all error records?").then((confirmed) => {
     if (confirmed) {
       clearErrors();
       updateErrorStats();
@@ -87995,7 +88003,7 @@ async function checkForUpdates() {
   const updateStatusElement = document.getElementById("ch-update-status");
   console.log("Checking for updates...");
   try {
-    const remoteManifestUrl = `https://raw.githubusercontent.com/damoshen123/st-chatu8/master/manifest.json?t=${(/* @__PURE__ */ new Date()).getTime()}`;
+    const remoteManifestUrl = `https://raw.githubusercontent.com/suirenv310/st-chatu8/main/manifest.json?t=${(/* @__PURE__ */ new Date()).getTime()}`;
     const response = await fetch(remoteManifestUrl, { cache: "no-cache" });
     if (!response.ok) {
       console.error("Failed to fetch remote manifest for update check.");
@@ -88596,7 +88604,7 @@ function handleImageUpload2(presetName, settings3, container) {
       };
       reader.readAsDataURL(file);
     } catch (error) {
-      console.error("\u4E0A\u4F20\u9884\u89C8\u56FE\u5931\u8D25:", error);
+      console.error("Preview upload failed: ", error);
       alert("Preview upload failed: " + error.message);
     }
   };
@@ -89032,7 +89040,7 @@ function st_chatu8_tishici_change(mode, settings3) {
     }
   };
   if (isDirty) {
-    stylishConfirm("\u60A8\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539\u3002\u8981\u653E\u5F03\u8FD9\u4E9B\u66F4\u6539\u5E76\u5207\u6362\u9884\u8BBE\u5417\uFF1F").then((confirmed) => {
+    stylishConfirm("You have unsaved changes. Discard them and switch presets?").then((confirmed) => {
       if (confirmed) {
         switchPreset();
       } else {
@@ -89107,7 +89115,7 @@ function st_chatu8_tishici_update(mode, settings3) {
     alert("No active preset. Use Save as first.");
     return;
   }
-  stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D\u9884\u8BBE "${presetName}" \u5417\uFF1F`).then((confirmed) => {
+  stylishConfirm(`Overwrite preset "${presetName}"?`).then((confirmed) => {
     if (confirmed) {
       const fixedPrompt = document.getElementById("fixedPrompt" + suffix).value;
       const fixedPrompt_end = document.getElementById("fixedPrompt_end" + suffix).value;
@@ -89150,7 +89158,7 @@ function st_chatu8_tishici_delete(mode, settings3) {
     alert(`Preset \"${valueToDelete}\" is used by: ${modesUsingPreset.join("\u3001 ")}. Switch those modes to another preset before deleting.`);
     return;
   }
-  stylishConfirm("\u662F\u5426\u786E\u5B9A\u5220\u9664").then((result) => {
+  stylishConfirm("Confirm deletion of ").then((result) => {
     if (result) {
       Reflect.deleteProperty(settings3.yushe, valueToDelete);
       settings3[yusheIdKey] = "\u9ED8\u8BA4";
@@ -89952,9 +89960,9 @@ init_database();
 
 
 function onRestoreDefaultSettingsClick() {
-  stylishConfirm("\u4F60\u786E\u5B9A\u8981\u6062\u590D\u9ED8\u8BA4\u8BBE\u7F6E\u5417\uFF1F\u63D0\u793A\u8BCD\u9884\u8BBE\u548C\u5DE5\u4F5C\u6D41\u4F1A\u6D88\u5931\u54E6\uFF01\u8BF7\u63D0\u524D\u5907\u4EFD\uFF01").then((result) => {
+  stylishConfirm("Restore default settings? This removes prompt presets and workflows. Back up your data first.").then((result) => {
     if (result) {
-      stylishConfirm("\u4F60\u771F\u7684\u786E\u5B9A\u5417\uFF1F").then(async (result2) => {
+      stylishConfirm("Confirm restoring defaults?").then(async (result2) => {
         if (result2) {
           const defaults = JSON.parse(JSON.stringify(defaultSettings));
           const settings3 = extension_settings73[extensionName];
@@ -90740,7 +90748,7 @@ async function loadImageCache(options = {}) {
 }
 async function clearCache() {
   const settings3 = extension_settings74[extensionName];
-  stylishConfirm(`\u4F60\u786E\u5B9A\u8981\u6E05\u9664\u6240\u6709\u8FC7\u671F\u7684\u56FE\u7247\u7F13\u5B58\u5417\uFF1F (\u8FC7\u671F\u65F6\u95F4: ${settings3.cache} \u5929)`).then(async (confirmed) => {
+  stylishConfirm(`Clear all expired image cache entries? (Expiry: ${settings3.cache} days)`).then(async (confirmed) => {
     if (confirmed) {
       try {
         const metadata = await getAllImageMetadata();
@@ -90781,7 +90789,7 @@ async function clearCache() {
           alert("No expired image cache found.");
         }
       } catch (error) {
-        console.error("\u6E05\u9664\u7F13\u5B58\u5931\u8D25:", error);
+        console.error("Failed to clear cache: ", error);
         alert("Cache cleanup failed. Check console.");
       }
     }
@@ -90913,7 +90921,7 @@ async function recalcImageSizes(options = {}) {
   }
   if (workload > 3e3) {
     const ok = await stylishConfirm(
-      `\u672C\u6B21\u9700\u8981\u7EDF\u8BA1 ${workload} \u4E2A\u9879\u76EE\uFF0C\u9884\u8BA1\u9700\u8981\u6570\u5206\u949F\u3002\u7EDF\u8BA1\u4F1A\u5728\u540E\u53F0\u8FDB\u884C\uFF0C\u53EF\u4EE5\u5173\u95ED\u8BBE\u7F6E\u9762\u677F\u3002\u662F\u5426\u7EE7\u7EED\uFF1F`
+      `Scan ${workload} items? This may take several minutes and continues in the background after closing settings.`
     );
     if (!ok) return;
   }
@@ -91014,7 +91022,7 @@ function initImageCache(settingsModal) {
       alert("Calculation already running. Wait or cancel it first.");
       return;
     }
-    const ok = await stylishConfirm("\u5C06\u5FFD\u7565\u5DF2\u6709\u8BB0\u5F55\uFF0C\u91CD\u65B0\u7EDF\u8BA1\u5168\u90E8\u9879\u76EE\u3002\u786E\u5B9A\u7EE7\u7EED\uFF1F");
+    const ok = await stylishConfirm("Rescan all items and replace the existing statistics?");
     if (ok) recalcImageSizes({ force: true });
   });
   $("#image-cache-recalc-cancel").on("click", () => {
@@ -91035,7 +91043,7 @@ function initImageCache(settingsModal) {
       alert("Select images to delete first.");
       return;
     }
-    const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u9009\u4E2D\u7684 ${selectedImages.size} \u5F20\u56FE\u7247\u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002`);
+    const confirmed = await stylishConfirm(`Delete the selected ${selectedImages.size} images?`);
     if (confirmed) {
       await deleteImagesByUuids(Array.from(selectedImages));
       alert("Selected images deleted.");
@@ -91125,7 +91133,7 @@ function initImageCache(settingsModal) {
       URL.revokeObjectURL(url);
       toastr.success(`Downloaded ${successCount} media files!`);
     } catch (error) {
-      console.error("\u751F\u6210\u538B\u7F29\u5305\u5931\u8D25:", error);
+      console.error("Failed to create archive: ", error);
       toastr.error("ZIP creation failed; files may be too large. Select fewer files.");
     }
   });
@@ -91643,6 +91651,121 @@ function updateNovelaiScheduleVisibility(targetModel = null) {
     scheduleField.style.display = "flex";
   }
 }
+function formatRefillDuration(seconds) {
+  if (!seconds || seconds <= 0) return "0s";
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor(seconds % 86400 / 3600);
+  const m = Math.floor(seconds % 3600 / 60);
+  const s = seconds % 60;
+  let res = "";
+  if (d > 0) res += `${d}d `;
+  if (h > 0) res += `${h}h `;
+  if (m > 0) res += `${m}m `;
+  if (s > 0 && d === 0) res += `${s}s`;
+  return res || `${s}s`;
+}
+async function queryNovelaiQuota(settingsModal) {
+  const apiInput = settingsModal.find("#novelaiApi");
+  const apiKey = (apiInput.val() || "").trim();
+  if (!apiKey) {
+    if (typeof toastr !== "undefined") {
+      toastr.warning("Enter your NovelAI API key first");
+    }
+    apiInput.focus();
+    return;
+  }
+  const checkBtn = settingsModal.find("#novelaiCheckQuotaBtn");
+  const btnText = checkBtn.find("span");
+  const quotaPanel = settingsModal.find("#novelaiQuotaPanel");
+  let baseUrl = "https://image.novelai.net";
+  const siteSelect = settingsModal.find("#novelaisite").val();
+  if (siteSelect && siteSelect !== "\u5B98\u7F51") {
+    const otherSite = (settingsModal.find("#novelaiOtherSite").val() || "").trim();
+    if (otherSite) {
+      baseUrl = otherSite.replace(/\/+$/, "");
+    }
+  }
+  checkBtn.addClass("is-loading").prop("disabled", true);
+  btnText.text("Checking...");
+  try {
+    const resp = await fetch(`${baseUrl}/user/subscription`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Accept": "application/json"
+      }
+    });
+    if (!resp.ok) {
+      if (resp.status === 401) {
+        throw new Error("Invalid or unauthorized API key (401)");
+      } else {
+        throw new Error(`HTTP status: ${resp.status}`);
+      }
+    }
+    const data = await resp.json();
+    const tierMap = {
+      0: "Free",
+      1: "Tablet membership",
+      2: "Scroll membership",
+      3: "Opus membership"
+    };
+    const tierName = tierMap[data.tier] || `membership (Tier ${data.tier})`;
+    settingsModal.find("#novelaiQuotaTierName").text(tierName);
+    const badge = settingsModal.find("#novelaiQuotaStatusBadge");
+    if (data.active) {
+      badge.removeClass("expired").text("Active");
+    } else {
+      badge.addClass("expired").text("Expired");
+    }
+    const now = /* @__PURE__ */ new Date();
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+    settingsModal.find("#novelaiQuotaRefreshTime").text(`${timeStr} checked`);
+    const usage = data.usage || {};
+    const percent = typeof usage.percent === "number" ? usage.percent : data.tier === 3 ? 100 : 0;
+    const timeUntilNext = usage.timeUntilNextPercent || 0;
+    const isNegative = !!usage.isNegative;
+    settingsModal.find("#novelaiV5PercentNum").text(percent);
+    let refillText = "";
+    if (isNegative) {
+      refillText = "(Quota overdrawn)";
+    } else if (timeUntilNext > 0) {
+      const timeDesc = formatRefillDuration(timeUntilNext);
+      refillText = `(Refilling: approximately ${timeDesc} +1%)`;
+    } else if (percent >= 100) {
+      refillText = "(Quota full)";
+    } else {
+      refillText = "(Refill paused)";
+    }
+    settingsModal.find("#novelaiV5RefillInfo").text(refillText);
+    const progressBar = settingsModal.find("#novelaiV5ProgressBar");
+    progressBar.removeClass("low warning");
+    if (percent <= 20) {
+      progressBar.addClass("low");
+    } else if (percent <= 50) {
+      progressBar.addClass("warning");
+    }
+    progressBar.css("width", `${Math.min(100, Math.max(0, percent))}%`);
+    const trainingSteps = data.trainingStepsLeft || {};
+    const fixedAnlas = Number(trainingSteps.fixedTrainingStepsLeft || 0);
+    const purchasedAnlas = Number(trainingSteps.purchasedTrainingSteps || 0);
+    const totalAnlas = fixedAnlas + purchasedAnlas;
+    settingsModal.find("#novelaiAnlasTotal").text(totalAnlas.toLocaleString());
+    settingsModal.find("#novelaiAnlasFixed").text(`Subscription: ${fixedAnlas.toLocaleString()}`);
+    settingsModal.find("#novelaiAnlasPurchased").text(`Purchased: ${purchasedAnlas.toLocaleString()}`);
+    quotaPanel.slideDown(250);
+    if (typeof toastr !== "undefined") {
+      toastr.success(`Balance checked: ${tierName}, Anlas ${totalAnlas.toLocaleString()}`);
+    }
+  } catch (err) {
+    console.error("[st-chatu8] \u67E5\u8BE2 NovelAI \u989D\u5EA6\u5931\u8D25:", err);
+    if (typeof toastr !== "undefined") {
+      toastr.error(`Balance check failed: ${err.message}`);
+    }
+  } finally {
+    checkBtn.removeClass("is-loading").prop("disabled", false);
+    btnText.text("Check balance");
+  }
+}
 function initNovelaiUI(settingsModal) {
   const settings3 = extension_settings75[extensionName];
   const novelaiModeSelect = document.getElementById("novelaimode");
@@ -91695,6 +91818,15 @@ function initNovelaiUI(settingsModal) {
   });
   settingsModal.find("#novelaiOtherSite").on("change input", function() {
     clearNovelAIUrlCache();
+  });
+  settingsModal.find("#novelaiCheckQuotaBtn").on("click", function() {
+    queryNovelaiQuota(settingsModal);
+  });
+  settingsModal.find("#novelaiApi").on("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      queryNovelaiQuota(settingsModal);
+    }
   });
   settingsModal.find("#novelaiApiToggle").on("click", function() {
     const input = settingsModal.find("#novelaiApi")[0];
@@ -92018,10 +92150,10 @@ function showVibeGeneratorDialog() {
       previewImage.style.display = "block";
       previewContainer.querySelector(".st-chatu8-image-placeholder").style.display = "none";
       removeImageBtn.style.display = "inline-block";
-      showStatus3("\u56FE\u7247\u5DF2\u81EA\u52A8\u4FDD\u5B58\uFF01", "success");
+      showStatus3("Image saved automatically!", "success");
     } catch (error) {
       console.error("[Vibe] \u4FDD\u5B58\u56FE\u7247\u5931\u8D25:", error);
-      showStatus3("\u4FDD\u5B58\u56FE\u7247\u5931\u8D25: " + error.message, "error");
+      showStatus3("Failed to save image: " + error.message, "error");
     }
   };
   removeImageBtn.onclick = async () => {
@@ -92053,10 +92185,10 @@ function showVibeGeneratorDialog() {
         thumbnail: settings3.vibePresets[presetId]?.thumbnail || null
       };
       saveSettingsDebounced48();
-      showStatus3("\u9884\u8BBE\u5DF2\u4FDD\u5B58\uFF01", "success");
+      showStatus3("Preset saved!", "success");
     } catch (error) {
       console.error("[Vibe] \u4FDD\u5B58\u9884\u8BBE\u5931\u8D25:", error);
-      showStatus3("\u4FDD\u5B58\u5931\u8D25: " + error.message, "error");
+      showStatus3("Save failed: " + error.message, "error");
     }
   };
   newBtn.onclick = async () => {
@@ -92079,10 +92211,10 @@ function showVibeGeneratorDialog() {
       saveSettingsDebounced48();
       loadPresetList();
       loadCurrentPreset();
-      showStatus3("\u65B0\u9884\u8BBE\u5DF2\u521B\u5EFA\uFF01", "success");
+      showStatus3("Preset created!", "success");
     } catch (error) {
       console.error("[Vibe] \u521B\u5EFA\u9884\u8BBE\u5931\u8D25:", error);
-      showStatus3("\u521B\u5EFA\u5931\u8D25: " + error.message, "error");
+      showStatus3("Creation failed: " + error.message, "error");
     }
   };
   deleteBtn.onclick = async () => {
@@ -92103,10 +92235,10 @@ function showVibeGeneratorDialog() {
       saveSettingsDebounced48();
       loadPresetList();
       loadCurrentPreset();
-      showStatus3("\u9884\u8BBE\u5DF2\u5220\u9664\uFF01", "success");
+      showStatus3("Preset deleted!", "success");
     } catch (error) {
       console.error("[Vibe] \u5220\u9664\u9884\u8BBE\u5931\u8D25:", error);
-      showStatus3("\u5220\u9664\u5931\u8D25: " + error.message, "error");
+      showStatus3("Deletion failed: " + error.message, "error");
     }
   };
   exportCurrentBtn.onclick = async () => {
@@ -92144,10 +92276,10 @@ function showVibeGeneratorDialog() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showStatus3("\u9884\u8BBE\u5DF2\u5BFC\u51FA\uFF01", "success");
+      showStatus3("Preset exported!", "success");
     } catch (error) {
       console.error("[Vibe] \u5BFC\u51FA\u9884\u8BBE\u5931\u8D25:", error);
-      showStatus3("\u5BFC\u51FA\u5931\u8D25: " + error.message, "error");
+      showStatus3("Export failed: " + error.message, "error");
     }
   };
   exportAllBtn.onclick = async () => {
@@ -92190,10 +92322,10 @@ function showVibeGeneratorDialog() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showStatus3(`\u5DF2\u5BFC\u51FA ${Object.keys(settings3.vibePresets).length} \u4E2A\u9884\u8BBE\uFF01`, "success");
+      showStatus3(`Exported ${Object.keys(settings3.vibePresets).length} presets!`, "success");
     } catch (error) {
       console.error("[Vibe] \u5BFC\u51FA\u5168\u90E8\u9884\u8BBE\u5931\u8D25:", error);
-      showStatus3("\u5BFC\u51FA\u5931\u8D25: " + error.message, "error");
+      showStatus3("Export failed: " + error.message, "error");
     }
   };
   importBtn.onclick = () => {
@@ -92259,10 +92391,10 @@ function showVibeGeneratorDialog() {
           saveSettingsDebounced48();
           loadPresetList();
           loadCurrentPreset();
-          showStatus3(`\u6210\u529F\u5BFC\u5165 ${importedCount} \u4E2A\u9884\u8BBE${skippedCount > 0 ? `\uFF0C\u8DF3\u8FC7 ${skippedCount} \u4E2A` : ""}\uFF01`, "success");
+          showStatus3(`Imported ${importedCount} presets${skippedCount > 0 ? `\uFF0C\u8DF3\u8FC7 ${skippedCount} \u4E2A` : ""}\uFF01`, "success");
         } catch (error) {
           console.error("[Vibe] \u5BFC\u5165\u9884\u8BBE\u5931\u8D25:", error);
-          showStatus3("\u5BFC\u5165\u5931\u8D25: " + error.message, "error");
+          showStatus3("Import failed: " + error.message, "error");
         }
       };
       reader.readAsText(file);
@@ -92316,7 +92448,7 @@ function showVibeGeneratorDialog() {
           strengthRange.value = strength;
           strengthNum.value = strength;
           document.getElementById("vibe-strength-val").textContent = strength;
-          showStatus3("\u6B63\u5728\u4FDD\u5B58 Vibe \u6570\u636E\u5230\u9884\u8BBE...", "loading");
+          showStatus3("Saving Vibe data to preset...", "loading");
           if (currentVibeDataId) {
             await deleteConfigImage(currentVibeDataId);
           }
@@ -92350,25 +92482,25 @@ function showVibeGeneratorDialog() {
           saveSettingsDebounced48();
           updateDownloadButtonState();
           if (warnings.length > 0) {
-            showStatus3(`\u26A0\uFE0F Vibe \u6587\u4EF6\u5DF2\u4FDD\u5B58\uFF0C\u4F46\u5B58\u5728\u4EE5\u4E0B\u95EE\u9898\uFF1A<br>${warnings.map((w) => "\u2022 " + w).join("<br>")}`, "success");
+            showStatus3(`⚠️ Vibe file saved with the following issues:<br>${warnings.map((w) => "\u2022 " + w).join("<br>")}`, "success");
           } else {
-            showStatus3('\u2705 Vibe \u6587\u4EF6\u5DF2\u4E0A\u4F20\u5E76\u4FDD\u5B58\u5230\u9884\u8BBE\uFF01\u73B0\u5728\u53EF\u4EE5\u70B9\u51FB"\u4E0B\u8F7D Vibe \u6587\u4EF6"\u91CD\u65B0\u5BFC\u51FA\u3002', "success");
+            showStatus3("✅ Vibe file uploaded and saved to the preset. Click Download Vibe file to export it.", "success");
           }
         } catch (error) {
           console.error("[Vibe] \u89E3\u6790 Vibe \u6587\u4EF6\u5931\u8D25:", error);
-          showStatus3("\u89E3\u6790\u5931\u8D25: " + error.message, "error");
+          showStatus3("Parsing failed: " + error.message, "error");
         }
       };
       reader.readAsText(file);
     } catch (error) {
       console.error("[Vibe] \u8BFB\u53D6 Vibe \u6587\u4EF6\u5931\u8D25:", error);
-      showStatus3("\u8BFB\u53D6\u5931\u8D25: " + error.message, "error");
+      showStatus3("Read failed: " + error.message, "error");
     }
   };
   submitBtn.onclick = async () => {
     const apiKey = (settings3.novelaiApi || "").trim();
     if (!apiKey || apiKey === "000000") {
-      showStatus3("\u8BF7\u5148\u5728 NovelAI \u8BBE\u7F6E\u4E2D\u586B\u5199 API Key", "error");
+      showStatus3("Enter an API key in NovelAI settings first", "error");
       return;
     }
     let imageToProcess = null;
@@ -92388,14 +92520,14 @@ function showVibeGeneratorDialog() {
       }
     }
     if (!imageToProcess) {
-      showStatus3("\u8BF7\u9009\u62E9\u53C2\u8003\u56FE\u7247", "error");
+      showStatus3("Select a reference image", "error");
       return;
     }
     const model = modelSelect2.value;
     const extractVal = 1;
     const strengthVal = parseFloat(strengthRange.value);
     try {
-      showStatus3("1/6 \u6B63\u5728\u8BFB\u53D6\u56FE\u7247...", "loading");
+      showStatus3("1/6 Reading image...", "loading");
       submitBtn.disabled = true;
       const imageDataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -92403,14 +92535,14 @@ function showVibeGeneratorDialog() {
         reader.onerror = reject;
         reader.readAsDataURL(imageToProcess);
       });
-      showStatus3("2/6 \u6B63\u5728\u5904\u7406\u56FE\u7247...", "loading");
+      showStatus3("2/6 Processing image...", "loading");
       const originalSize = imageToProcess.size;
       console.log(`[Vibe] \u539F\u59CB\u56FE\u7247\u5927\u5C0F: ${(originalSize / 1024).toFixed(2)} KB`);
       let processedBase64;
       processedBase64 = imageDataUrl.split(",")[1];
       console.log(`[Vibe] \u4F7F\u7528\u539F\u59CB\u56FE\u7247\uFF08\u672A\u4F18\u5316\uFF09`);
       const imageBase64 = processedBase64;
-      showStatus3("3/6 \u6B63\u5728\u8BF7\u6C42 API \u7F16\u7801 Vibe...\uFF08\u9700\u8981\u51E0\u79D2\uFF09", "loading");
+      showStatus3("3/6 Requesting Vibe encoding (this may take a few seconds)...", "loading");
       const payload = {
         image: imageBase64,
         information_extracted: extractVal,
@@ -92439,11 +92571,11 @@ function showVibeGeneratorDialog() {
       if (vibeUint8.length < 100) {
         throw new Error(`encoding \u6570\u636E\u5F02\u5E38 (\u4EC5 ${vibeUint8.length} bytes)\uFF0CAPI \u53EF\u80FD\u8FD4\u56DE\u4E86\u9519\u8BEF\u54CD\u5E94`);
       }
-      showStatus3("4/6 \u6B63\u5728\u6784\u5EFA Vibe JSON...", "loading");
+      showStatus3("4/6 Building Vibe JSON...", "loading");
       const imageFormat = imageToProcess.type?.split("/")[1] || "png";
       console.log(`[Vibe] \u4F7F\u7528\u56FE\u7247\u683C\u5F0F: ${imageFormat}`);
       const finalJson = await buildVibeJson(imageBase64, vibeBase64, model, extractVal, strengthVal, imageFormat);
-      showStatus3("5/6 \u4FDD\u5B58\u56FE\u7247\u5230\u9884\u8BBE...", "loading");
+      showStatus3("5/6 Saving image to preset...", "loading");
       if (selectedFile) {
         const imageData = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -92463,7 +92595,7 @@ function showVibeGeneratorDialog() {
         currentImageId = newImageId;
         selectedFile = null;
       }
-      showStatus3("6/6 \u4FDD\u5B58 Vibe \u6570\u636E\u5230\u9884\u8BBE...", "loading");
+      showStatus3("6/6 Saving Vibe data to preset...", "loading");
       const jsonString = JSON.stringify(finalJson);
       if (currentVibeDataId) {
         await deleteConfigImage(currentVibeDataId);
@@ -92485,22 +92617,22 @@ function showVibeGeneratorDialog() {
       saveSettingsDebounced48();
       updateDownloadButtonState();
       const filename = `${finalJson.name}.naiv4vibe`;
-      showStatus3(`\u2705 \u5B8C\u6210\uFF01Vibe \u6570\u636E\u5DF2\u81EA\u52A8\u4FDD\u5B58\u5230\u9884\u8BBE "${presetId}"<br>\u70B9\u51FB"\u4E0B\u8F7D Vibe \u6587\u4EF6"\u53EF\u5BFC\u51FA ${filename}`, "success");
+      showStatus3(`✅ Vibe data saved to preset "${presetId}"<br>Click Download Vibe file to export ${filename}`, "success");
     } catch (err) {
       console.error("[Vibe] \u751F\u6210\u5931\u8D25:", err);
-      showStatus3(`\u5931\u8D25: ${err.message}`, "error");
+      showStatus3(`Failed: ${err.message}`, "error");
     } finally {
       submitBtn.disabled = false;
     }
   };
   downloadBtn.onclick = async () => {
     if (!currentVibeDataId) {
-      showStatus3("\u6CA1\u6709\u53EF\u4E0B\u8F7D\u7684 Vibe \u6570\u636E\uFF0C\u8BF7\u5148\u751F\u6210\u3002", "error");
+      showStatus3("Generate Vibe data before downloading.", "error");
       return;
     }
     try {
       downloadBtn.disabled = true;
-      showStatus3("\u6B63\u5728\u51C6\u5907\u4E0B\u8F7D...", "loading");
+      showStatus3("Preparing download...", "loading");
       const jsonString = await getConfigText(currentVibeDataId);
       if (!jsonString) {
         throw new Error("\u65E0\u6CD5\u8BFB\u53D6 Vibe \u6570\u636E");
@@ -92519,10 +92651,10 @@ function showVibeGeneratorDialog() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      showStatus3(`\u6587\u4EF6 ${filename} \u5DF2\u4E0B\u8F7D\uFF01\u53EF\u4EE5\u76F4\u63A5\u4E0A\u4F20\u5230 NovelAI \u5B98\u7F51\u4F7F\u7528\u3002`, "success");
+      showStatus3(`File ${filename} downloaded. You can upload it to NovelAI.`, "success");
     } catch (err) {
       console.error("[Vibe] \u4E0B\u8F7D\u5931\u8D25:", err);
-      showStatus3(`\u4E0B\u8F7D\u5931\u8D25: ${err.message}`, "error");
+      showStatus3(`Download failed: ${err.message}`, "error");
     } finally {
       downloadBtn.disabled = false;
     }
@@ -92747,11 +92879,11 @@ function showCharRefUploadDialog() {
     if (!file) return;
     const validTypes = ["image/png", "image/jpeg", "image/webp"];
     if (!validTypes.includes(file.type)) {
-      showCharRefStatus(statusDiv, "\u4E0D\u652F\u6301\u7684\u56FE\u7247\u683C\u5F0F\u3002\u8BF7\u9009\u62E9 PNG\u3001JPEG \u6216 WebP \u683C\u5F0F\u7684\u56FE\u7247\u3002", "error");
+      showCharRefStatus(statusDiv, "Choose a PNG, JPEG, or WebP image.", "error");
       return;
     }
     try {
-      showCharRefStatus(statusDiv, "\u6B63\u5728\u4FDD\u5B58\u56FE\u7247...", "info");
+      showCharRefStatus(statusDiv, "Saving image...", "info");
       const imageData = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e2) => resolve(e2.target.result);
@@ -92781,14 +92913,14 @@ function showCharRefUploadDialog() {
       previewImage.style.display = "block";
       previewContainer.querySelector(".st-chatu8-image-placeholder").style.display = "none";
       removePreviewBtn.style.display = "inline-block";
-      showCharRefStatus(statusDiv, "\u56FE\u7247\u5DF2\u4FDD\u5B58\uFF01", "success");
+      showCharRefStatus(statusDiv, "Image saved!", "success");
       console.log("[CharRef] Image saved with ID:", newImageId);
     } catch (error) {
       console.error("[CharRef] \u4FDD\u5B58\u56FE\u7247\u5931\u8D25:", error);
       if (error.name === "QuotaExceededError") {
-        showCharRefStatus(statusDiv, "\u5B58\u50A8\u7A7A\u95F4\u4E0D\u8DB3\uFF0C\u8BF7\u5220\u9664\u4E00\u4E9B\u65E7\u56FE\u7247", "error");
+        showCharRefStatus(statusDiv, "Storage is full. Delete unused images.", "error");
       } else {
-        showCharRefStatus(statusDiv, `\u4FDD\u5B58\u5931\u8D25: ${error.message || "\u672A\u77E5\u9519\u8BEF"}`, "error");
+        showCharRefStatus(statusDiv, `Save failed: ${error.message || "Unknown error"}`, "error");
       }
     }
   };
@@ -92822,10 +92954,10 @@ function showCharRefUploadDialog() {
       saveSettingsDebounced49();
       loadPresetList();
       loadCurrentPreset();
-      showCharRefStatus(statusDiv, "\u65B0\u9884\u8BBE\u5DF2\u521B\u5EFA\uFF01", "success");
+      showCharRefStatus(statusDiv, "Preset created!", "success");
     } catch (error) {
       console.error("[CharRef] \u521B\u5EFA\u9884\u8BBE\u5931\u8D25:", error);
-      showCharRefStatus(statusDiv, "\u521B\u5EFA\u5931\u8D25: " + error.message, "error");
+      showCharRefStatus(statusDiv, "Creation failed: " + error.message, "error");
     }
   };
   deleteBtn.onclick = async () => {
@@ -92845,10 +92977,10 @@ function showCharRefUploadDialog() {
       saveSettingsDebounced49();
       loadPresetList();
       loadCurrentPreset();
-      showCharRefStatus(statusDiv, "\u9884\u8BBE\u5DF2\u5220\u9664\uFF01", "success");
+      showCharRefStatus(statusDiv, "Preset deleted!", "success");
     } catch (error) {
       console.error("[CharRef] \u5220\u9664\u9884\u8BBE\u5931\u8D25:", error);
-      showCharRefStatus(statusDiv, "\u5220\u9664\u5931\u8D25: " + error.message, "error");
+      showCharRefStatus(statusDiv, "Deletion failed: " + error.message, "error");
     }
   };
   exportCurrentBtn.onclick = async () => {
@@ -92878,10 +93010,10 @@ function showCharRefUploadDialog() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showCharRefStatus(statusDiv, "\u9884\u8BBE\u5DF2\u5BFC\u51FA\uFF01", "success");
+      showCharRefStatus(statusDiv, "Preset exported!", "success");
     } catch (error) {
       console.error("[CharRef] \u5BFC\u51FA\u9884\u8BBE\u5931\u8D25:", error);
-      showCharRefStatus(statusDiv, "\u5BFC\u51FA\u5931\u8D25: " + error.message, "error");
+      showCharRefStatus(statusDiv, "Export failed: " + error.message, "error");
     }
   };
   exportAllBtn.onclick = async () => {
@@ -92914,10 +93046,10 @@ function showCharRefUploadDialog() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showCharRefStatus(statusDiv, `\u5DF2\u5BFC\u51FA ${Object.keys(settings3.charRefPresets).length} \u4E2A\u9884\u8BBE\uFF01`, "success");
+      showCharRefStatus(statusDiv, `Exported ${Object.keys(settings3.charRefPresets).length} presets!`, "success");
     } catch (error) {
       console.error("[CharRef] \u5BFC\u51FA\u5168\u90E8\u9884\u8BBE\u5931\u8D25:", error);
-      showCharRefStatus(statusDiv, "\u5BFC\u51FA\u5931\u8D25: " + error.message, "error");
+      showCharRefStatus(statusDiv, "Export failed: " + error.message, "error");
     }
   };
   importBtn.onclick = () => {
@@ -92967,10 +93099,10 @@ function showCharRefUploadDialog() {
           saveSettingsDebounced49();
           loadPresetList();
           loadCurrentPreset();
-          showCharRefStatus(statusDiv, `\u6210\u529F\u5BFC\u5165 ${importedCount} \u4E2A\u9884\u8BBE${skippedCount > 0 ? `\uFF0C\u8DF3\u8FC7 ${skippedCount} \u4E2A` : ""}\uFF01`, "success");
+          showCharRefStatus(statusDiv, `Imported ${importedCount} presets${skippedCount > 0 ? `\uFF0C\u8DF3\u8FC7 ${skippedCount} \u4E2A` : ""}\uFF01`, "success");
         } catch (error) {
           console.error("[CharRef] \u5BFC\u5165\u9884\u8BBE\u5931\u8D25:", error);
-          showCharRefStatus(statusDiv, "\u5BFC\u5165\u5931\u8D25: " + error.message, "error");
+          showCharRefStatus(statusDiv, "Import failed: " + error.message, "error");
         }
       };
       reader.readAsText(file);
@@ -93009,11 +93141,11 @@ function createNewCharRefGroup(selectElement, statusDiv) {
   }
   const trimmedName = groupName.trim();
   if (!trimmedName) {
-    showCharRefStatus(statusDiv, "\u7EC4\u540D\u4E0D\u80FD\u4E3A\u7A7A", "error");
+    showCharRefStatus(statusDiv, "Group name cannot be empty", "error");
     return;
   }
   if (charRefGroups[trimmedName]) {
-    showCharRefStatus(statusDiv, `\u7EC4\u540D "${trimmedName}" \u5DF2\u5B58\u5728`, "error");
+    showCharRefStatus(statusDiv, `Group "${trimmedName}" already exists`, "error");
     return;
   }
   charRefGroups[trimmedName] = {
@@ -93032,11 +93164,11 @@ function createNewCharRefGroup(selectElement, statusDiv) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showCharRefStatus(statusDiv, `\u521B\u5EFA\u6210\u529F\u4F46\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+    showCharRefStatus(statusDiv, `Created, but saving failed: ${error.message}`, "error");
     return;
   }
   loadCharRefGroupList(selectElement);
-  showCharRefStatus(statusDiv, `\u5DF2\u521B\u5EFA\u65B0\u7EC4 "${trimmedName}"`, "success");
+  showCharRefStatus(statusDiv, `Created group "${trimmedName}"`, "success");
   console.log("[CharRef] Created new group:", trimmedName);
 }
 function saveCurrentCharRefGroup(selectElement, statusDiv) {
@@ -93044,12 +93176,12 @@ function saveCurrentCharRefGroup(selectElement, statusDiv) {
   const charRefGroups = settings3.charRefGroups || {};
   const currentGroupId = selectElement.value;
   if (!currentGroupId) {
-    showCharRefStatus(statusDiv, "\u672A\u9009\u62E9\u7EC4", "error");
+    showCharRefStatus(statusDiv, "No group selected", "error");
     return;
   }
   const currentGroup = charRefGroups[currentGroupId];
   if (!currentGroup) {
-    showCharRefStatus(statusDiv, "\u5F53\u524D\u7EC4\u4E0D\u5B58\u5728", "error");
+    showCharRefStatus(statusDiv, "The selected group no longer exists", "error");
     return;
   }
   currentGroup.updatedAt = Date.now();
@@ -93064,10 +93196,10 @@ function saveCurrentCharRefGroup(selectElement, statusDiv) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showCharRefStatus(statusDiv, `\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+    showCharRefStatus(statusDiv, `Save failed: ${error.message}`, "error");
     return;
   }
-  showCharRefStatus(statusDiv, `\u5DF2\u4FDD\u5B58\u7EC4 "${currentGroupId}"`, "success");
+  showCharRefStatus(statusDiv, `Saved group "${currentGroupId}"`, "success");
   console.log("[CharRef] Saved group:", currentGroupId);
 }
 async function deleteCharRefGroup(selectElement, statusDiv) {
@@ -93075,11 +93207,11 @@ async function deleteCharRefGroup(selectElement, statusDiv) {
   const charRefGroups = settings3.charRefGroups || {};
   const currentGroupId = selectElement.value;
   if (!currentGroupId) {
-    showCharRefStatus(statusDiv, "\u672A\u9009\u62E9\u7EC4", "error");
+    showCharRefStatus(statusDiv, "No group selected", "error");
     return;
   }
   if (currentGroupId === "\u9ED8\u8BA4\u7EC4" && Object.keys(charRefGroups).length === 1) {
-    showCharRefStatus(statusDiv, "\u4E0D\u80FD\u5220\u9664\u552F\u4E00\u7684\u7EC4", "error");
+    showCharRefStatus(statusDiv, "Keep at least one group", "error");
     return;
   }
   const confirmed = confirm(`Permanently delete group \"${currentGroupId}\"?`);
@@ -93121,10 +93253,10 @@ async function deleteCharRefGroup(selectElement, statusDiv) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showCharRefStatus(statusDiv, `\u5220\u9664\u6210\u529F\u4F46\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+    showCharRefStatus(statusDiv, `Deleted, but saving failed: ${error.message}`, "error");
   }
   loadCharRefGroupList(selectElement);
-  showCharRefStatus(statusDiv, `\u5DF2\u5220\u9664\u7EC4 "${currentGroupId}"`, "success");
+  showCharRefStatus(statusDiv, `Deleted group "${currentGroupId}"`, "success");
   console.log("[CharRef] Deleted group:", currentGroupId);
 }
 function showCharRefGroupEditorDialog() {
@@ -93408,13 +93540,13 @@ function addCharRefToGroup(groupSelect, slotsContainer, addRefBtn, statusDiv) {
   const currentGroupId = groupSelect.value;
   const currentGroup = charRefGroups[currentGroupId];
   if (!currentGroup) {
-    showCharRefStatus(statusDiv, "\u9519\u8BEF: \u672A\u9009\u62E9\u7EC4\u3002\u8BF7\u5148\u9009\u62E9\u6216\u521B\u5EFA\u4E00\u4E2A\u7EC4\u3002", "error");
+    showCharRefStatus(statusDiv, "Select or create a group first.", "error");
     console.error("[CharRef] No group selected when attempting to add reference");
     return;
   }
   const references = currentGroup.references || [];
   if (references.length >= 4) {
-    showCharRefStatus(statusDiv, "\u5DF2\u8FBE\u5230\u6700\u5927\u6570\u91CF (4\u4E2A)\u3002\u6BCF\u4E2A\u7EC4\u6700\u591A\u53EF\u5305\u542B 4 \u4E2A\u89D2\u8272\u53C2\u8003\u3002", "error");
+    showCharRefStatus(statusDiv, "Limit reached. Each group supports up to four character references.", "error");
     console.warn("[CharRef] Maximum reference limit reached for group:", currentGroupId);
     return;
   }
@@ -93422,7 +93554,7 @@ function addCharRefToGroup(groupSelect, slotsContainer, addRefBtn, statusDiv) {
     showCharRefImageLibrary((imageId) => {
       try {
         if (!imageId || typeof imageId !== "string") {
-          showCharRefStatus(statusDiv, "\u9519\u8BEF: \u65E0\u6548\u7684\u56FE\u7247 ID", "error");
+          showCharRefStatus(statusDiv, "Invalid image ID", "error");
           console.error("[CharRef] Invalid imageId received:", imageId);
           return;
         }
@@ -93444,11 +93576,11 @@ function addCharRefToGroup(groupSelect, slotsContainer, addRefBtn, statusDiv) {
             timestamp: (/* @__PURE__ */ new Date()).toISOString(),
             stack: error.stack
           });
-          showCharRefStatus(statusDiv, `\u9519\u8BEF: \u4FDD\u5B58\u8BBE\u7F6E\u5931\u8D25 - ${error.message}`, "error");
+          showCharRefStatus(statusDiv, `Failed to save settings: ${error.message}`, "error");
           return;
         }
         renderCharRefSlots(slotsContainer, groupSelect, addRefBtn);
-        showCharRefStatus(statusDiv, "\u89D2\u8272\u53C2\u8003\u5DF2\u6210\u529F\u6DFB\u52A0\u5230\u7EC4", "success");
+        showCharRefStatus(statusDiv, "Character reference added to group", "success");
         console.log("[CharRef] Successfully added reference to group:", currentGroupId, imageId);
       } catch (error) {
         console.error("[CharRef] Error adding reference to group:", {
@@ -93458,7 +93590,7 @@ function addCharRefToGroup(groupSelect, slotsContainer, addRefBtn, statusDiv) {
           timestamp: (/* @__PURE__ */ new Date()).toISOString(),
           stack: error.stack
         });
-        showCharRefStatus(statusDiv, `\u9519\u8BEF: \u6DFB\u52A0\u89D2\u8272\u53C2\u8003\u5931\u8D25 - ${error.message}`, "error");
+        showCharRefStatus(statusDiv, `Failed to add character reference: ${error.message}`, "error");
       }
     });
   } catch (error) {
@@ -93468,7 +93600,7 @@ function addCharRefToGroup(groupSelect, slotsContainer, addRefBtn, statusDiv) {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       stack: error.stack
     });
-    showCharRefStatus(statusDiv, `\u9519\u8BEF: \u65E0\u6CD5\u6253\u5F00\u56FE\u7247\u5E93 - ${error.message}`, "error");
+    showCharRefStatus(statusDiv, `Failed to open image library: ${error.message}`, "error");
   }
 }
 async function removeCharRefFromGroup(index, groupSelect, slotsContainer, addRefBtn, statusDiv) {
@@ -93477,11 +93609,11 @@ async function removeCharRefFromGroup(index, groupSelect, slotsContainer, addRef
   const currentGroupId = groupSelect.value;
   const currentGroup = charRefGroups[currentGroupId];
   if (!currentGroup || !Array.isArray(currentGroup.references)) {
-    showCharRefStatus(statusDiv, "\u9519\u8BEF: \u7EC4\u6570\u636E\u65E0\u6548", "error");
+    showCharRefStatus(statusDiv, "Invalid group data", "error");
     return;
   }
   if (index < 0 || index >= currentGroup.references.length) {
-    showCharRefStatus(statusDiv, "\u9519\u8BEF: \u65E0\u6548\u7684\u7D22\u5F15", "error");
+    showCharRefStatus(statusDiv, "Invalid index", "error");
     return;
   }
   const confirmed = confirm("Remove this character reference?");
@@ -93495,11 +93627,11 @@ async function removeCharRefFromGroup(index, groupSelect, slotsContainer, addRef
     saveSettingsDebounced49();
   } catch (error) {
     console.error("[CharRef] Failed to save settings after removing reference:", error);
-    showCharRefStatus(statusDiv, `\u9519\u8BEF: \u4FDD\u5B58\u8BBE\u7F6E\u5931\u8D25 - ${error.message}`, "error");
+    showCharRefStatus(statusDiv, `Failed to save settings: ${error.message}`, "error");
     return;
   }
   await renderCharRefSlots(slotsContainer, groupSelect, addRefBtn);
-  showCharRefStatus(statusDiv, "\u89D2\u8272\u53C2\u8003\u5DF2\u79FB\u9664", "success");
+  showCharRefStatus(statusDiv, "Character reference removed", "success");
   console.log("[CharRef] Removed reference at index:", index);
 }
 function bindCharRefSlotEvents(slotsContainer, groupSelect, addRefBtn) {
@@ -93522,7 +93654,7 @@ function bindCharRefSlotEvents(slotsContainer, groupSelect, addRefBtn) {
           console.log("[CharRef] Updated reference type:", index, newType);
         } catch (error) {
           console.error("[CharRef] Failed to save after type change:", error);
-          showCharRefStatus(statusDiv, `\u4FDD\u5B58\u5931\u8D25: ${error.message}`, "error");
+          showCharRefStatus(statusDiv, `Save failed: ${error.message}`, "error");
         }
       }
     };
@@ -93772,7 +93904,7 @@ async function buildTagTree() {
   } catch (error) {
     console.error("Error building tag tree:", error);
     VOCABULARY_TREE_CONTAINER.textContent = "Failed to load tag browser.";
-    showToast("\u52A0\u8F7D\u6807\u7B7E\u6D4F\u89C8\u5668\u5931\u8D25", "error");
+    showToast("Failed to load tag browser", "error");
   }
 }
 async function fetchTagDataFiles() {
@@ -93809,7 +93941,7 @@ async function fetchTagDataFiles() {
     return fileNames.map((name) => ({ name }));
   } catch (error) {
     console.error("Error fetching tag data files:", error);
-    showToast("\u65E0\u6CD5\u52A0\u8F7D\u8BCD\u5E93\u6587\u4EF6\u5217\u8868", "error");
+    showToast("Failed to load vocabulary file list", "error");
     return [];
   }
 }
@@ -93859,11 +93991,11 @@ async function renderVocabularyList() {
 }
 async function installVocabulary2(fileName) {
   if (!fileName) {
-    showToast("\u65E0\u6548\u7684\u6587\u4EF6\u540D", "warning");
+    showToast("Invalid filename", "warning");
     return;
   }
   try {
-    showToast(`\u6B63\u5728\u5B89\u88C5 ${fileName}...`, "info");
+    showToast(`Installing ${fileName}...`, "info");
     const response = await fetch(`${TAG_DATA_PATH}${fileName}`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -93879,7 +94011,7 @@ async function installVocabulary2(fileName) {
     const installedVocab = await dbs.getInstalledVocabularies();
     const vocabInfo = installedVocab.find((v) => v.fileName === fileName);
     const tagCount = vocabInfo ? vocabInfo.tagCount : 0;
-    showToast(`${fileName} \u5B89\u88C5\u6210\u529F\uFF0C\u5305\u542B ${tagCount} \u4E2A\u6807\u7B7E`, "success");
+    showToast(`${fileName} installed with ${tagCount} tags`, "success");
     await renderVocabularyList();
     if (fileName === "tags.json") {
       cachedTagTreeData = null;
@@ -93887,28 +94019,28 @@ async function installVocabulary2(fileName) {
     }
   } catch (error) {
     console.error(`Error installing vocabulary ${fileName}:`, error);
-    showToast(`\u5B89\u88C5\u5931\u8D25: ${error.message}`, "error");
+    showToast(`Installation failed: ${error.message}`, "error");
   }
 }
 async function uninstallVocabulary2(fileName) {
   if (!fileName) {
-    showToast("\u65E0\u6548\u7684\u6587\u4EF6\u540D", "warning");
+    showToast("Invalid filename", "warning");
     return;
   }
   try {
     await dbs.uninstallVocabulary(fileName);
-    showToast(`${fileName} \u5378\u8F7D\u6210\u529F`, "success");
+    showToast(`${fileName} uninstalled`, "success");
     await renderVocabularyList();
     if (fileName === "tags.json") {
       await buildTagTree();
     }
   } catch (error) {
     console.error(`Error uninstalling vocabulary ${fileName}:`, error);
-    showToast(`\u5378\u8F7D\u5931\u8D25: ${error.message}`, "error");
+    showToast(`Uninstall failed: ${error.message}`, "error");
   }
 }
 async function installAllVocabularies() {
-  showToast("\u5F00\u59CB\u6279\u91CF\u5B89\u88C5\u6240\u6709\u672A\u5B89\u88C5\u7684\u8BCD\u5E93...", "info");
+  showToast("Installing all remaining vocabularies...", "info");
   const [files, installed] = await Promise.all([
     fetchTagDataFiles(),
     dbs.getInstalledVocabularies()
@@ -93916,25 +94048,25 @@ async function installAllVocabularies() {
   const installedFiles = new Set(installed.map((item) => item.fileName));
   const filesToInstall = files.filter((file) => !installedFiles.has(file.name));
   if (filesToInstall.length === 0) {
-    showToast("\u6240\u6709\u8BCD\u5E93\u5747\u5DF2\u5B89\u88C5\u3002", "success");
+    showToast("All vocabularies are installed.", "success");
     return;
   }
   for (const file of filesToInstall) {
     await installVocabulary2(file.name);
   }
-  showToast("\u6279\u91CF\u5B89\u88C5\u5B8C\u6210\uFF01", "success");
+  showToast("Vocabulary installation complete!", "success");
 }
 async function uninstallAllVocabularies() {
-  showToast("\u5F00\u59CB\u6279\u91CF\u5378\u8F7D\u6240\u6709\u5DF2\u5B89\u88C5\u7684\u8BCD\u5E93...", "info");
+  showToast("Uninstalling all vocabularies...", "info");
   const installed = await dbs.getInstalledVocabularies();
   if (installed.length === 0) {
-    showToast("\u6CA1\u6709\u5DF2\u5B89\u88C5\u7684\u8BCD\u5E93\u3002", "success");
+    showToast("No vocabularies installed.", "success");
     return;
   }
   for (const item of installed) {
     await uninstallVocabulary2(item.fileName);
   }
-  showToast("\u6279\u91CF\u5378\u8F7D\u5B8C\u6210\uFF01", "success");
+  showToast("Vocabulary uninstall complete!", "success");
 }
 async function searchTags2() {
   const keyword = VOCABULARY_SEARCH_INPUT.value.trim();
@@ -93958,7 +94090,7 @@ async function searchTags2() {
         div.className = "st-chatu8-search-result-item";
         div.onclick = () => {
           navigator.clipboard.writeText(tag.name).then(() => {
-            showToast(`\u5DF2\u590D\u5236: ${tag.name}`, "success");
+            showToast(`Copied: ${tag.name}`, "success");
           });
         };
         VOCABULARY_SEARCH_RESULTS.appendChild(div);
@@ -93966,7 +94098,7 @@ async function searchTags2() {
     }
   } catch (error) {
     console.error("Error searching tags:", error);
-    showToast("\u641C\u7D22\u5931\u8D25", "error");
+    showToast("Search failed", "error");
   }
 }
 function handleTagBackspace() {
@@ -93981,7 +94113,7 @@ function handleTagClear() {
 function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(text).then(() => {
-      showToast(`\u5DF2\u590D\u5236: "${text}"`, "success");
+      showToast(`Copied: "${text}"`, "success");
     }).catch((err) => {
       console.error("\u4F7F\u7528 Clipboard API \u590D\u5236\u5931\u8D25: ", err);
       fallbackCopyTextToClipboard(text);
@@ -94009,25 +94141,25 @@ function fallbackCopyTextToClipboard(text) {
   try {
     const successful = document.execCommand("copy");
     if (successful) {
-      showToast(`\u5DF2\u590D\u5236: "${text}"`, "success");
+      showToast(`Copied: "${text}"`, "success");
     } else {
-      showToast("\u590D\u5236\u5931\u8D25\uFF0C\u6D4F\u89C8\u5668\u4E0D\u652F\u6301\u6B64\u64CD\u4F5C", "error");
+      showToast("Copy failed. This browser does not support the operation.", "error");
     }
   } catch (err) {
-    console.error("\u540E\u5907\u590D\u5236\u65B9\u6CD5\u5931\u8D25: ", err);
-    showToast("\u590D\u5236\u5931\u8D25\uFF0C\u53D1\u751F\u672A\u77E5\u9519\u8BEF", "error");
+    console.error("Fallback copy failed: ", err);
+    showToast("Copy failed with an unknown error", "error");
   }
   document.body.removeChild(textArea);
 }
 function handleTagCopy() {
   const rawText = VOCABULARY_SELECTED_TAGS.value.trim();
   if (!rawText) {
-    showToast("\u8F93\u5165\u6846\u5185\u6CA1\u6709\u6807\u7B7E\u53EF\u4EE5\u590D\u5236", "info");
+    showToast("No tags in the input to copy", "info");
     return;
   }
   const result = rawText.replace(/\(/g, "\uFF08").replace(/\)/g, "\uFF09");
   if (!result) {
-    showToast("\u6CA1\u6709\u53EF\u4EE5\u590D\u5236\u7684\u6807\u7B7E", "info");
+    showToast("No tags to copy", "info");
     return;
   }
   copyToClipboard(result);
@@ -94063,11 +94195,11 @@ async function renderManualTags() {
         if (confirm(`Delete tag \"${tag.name}\"?`)) {
           try {
             await dbs.deleteTagByName(tag.name);
-            showToast(`\u6807\u7B7E "${tag.name}" \u5DF2\u5220\u9664`, "success");
+            showToast(`Tag "${tag.name}" deleted`, "success");
             await renderManualTags();
           } catch (error) {
             console.error("Error deleting tag:", error);
-            showToast(`\u5220\u9664\u5931\u8D25: ${error.message}`, "error");
+            showToast(`Deletion failed: ${error.message}`, "error");
           }
         }
       };
@@ -94079,37 +94211,37 @@ async function renderManualTags() {
   } catch (error) {
     console.error("Error rendering manual tags:", error);
     VOCABULARY_MANUAL_TAGS_LIST.textContent = "Failed to load manual tags.";
-    showToast("\u52A0\u8F7D\u624B\u52A8\u6807\u7B7E\u5217\u8868\u5931\u8D25", "error");
+    showToast("Failed to load manual tag list", "error");
   }
 }
 async function handleManualTagAdd() {
   const original = VOCABULARY_MANUAL_TAG_ORIGINAL_INPUT.value.trim();
   const translation = VOCABULARY_MANUAL_TAG_TRANSLATION_INPUT.value.trim();
   if (!original) {
-    showToast("\u6807\u7B7E\u539F\u6587\u4E0D\u80FD\u4E3A\u7A7A", "info");
+    showToast("Tag text cannot be empty", "info");
     return;
   }
   try {
     const existingTags = await dbs.searchTags(original, { startsWith: false, limit: 1 });
     if (existingTags.some((t) => t.name.toLowerCase() === original.toLowerCase())) {
-      showToast(`\u6807\u7B7E "${original}" \u5DF2\u5B58\u5728`, "warning");
+      showToast(`Tag "${original}" already exists`, "warning");
       return;
     }
     await dbs.addTag({ name: original, translation, hot: 0, fileName: "manual" });
     VOCABULARY_MANUAL_TAG_ORIGINAL_INPUT.value = "";
     VOCABULARY_MANUAL_TAG_TRANSLATION_INPUT.value = "";
-    showToast(`\u6210\u529F\u6DFB\u52A0\u6807\u7B7E: ${original}`, "success");
+    showToast(`Added tag: ${original}`, "success");
     await renderManualTags();
   } catch (error) {
     console.error("Error adding manual tag:", error);
-    showToast(`\u6DFB\u52A0\u5931\u8D25: ${error.message}`, "error");
+    showToast(`Failed to add: ${error.message}`, "error");
   }
 }
 async function handleManualTagsExport() {
   try {
     const manualTags = await dbs.getManualTags();
     if (manualTags.length === 0) {
-      showToast("\u6CA1\u6709\u53EF\u4EE5\u5BFC\u51FA\u7684\u6807\u7B7E", "info");
+      showToast("No tags to export", "info");
       return;
     }
     const exportData = manualTags.map((tag) => ({ name: tag.name, translation: tag.translation }));
@@ -94120,10 +94252,10 @@ async function handleManualTagsExport() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    showToast("\u5BFC\u51FA\u6210\u529F", "success");
+    showToast("Export complete", "success");
   } catch (error) {
     console.error("Error exporting manual tags:", error);
-    showToast(`\u5BFC\u51FA\u5931\u8D25: ${error.message}`, "error");
+    showToast(`Export failed: ${error.message}`, "error");
   }
 }
 async function handleManualTagsImport(event) {
@@ -94140,7 +94272,7 @@ async function handleManualTagsImport(event) {
       const existingTagNames = new Set(existingTags.map((t) => t.name.toLowerCase()));
       let addedCount = 0;
       let skippedCount = 0;
-      showToast("\u5F00\u59CB\u5BFC\u5165\u6807\u7B7E...", "info");
+      showToast("Importing tags...", "info");
       for (const tag of importedData) {
         if (!tag.name || typeof tag.name !== "string") {
           continue;
@@ -94155,12 +94287,12 @@ async function handleManualTagsImport(event) {
         existingTagNames.add(original.toLowerCase());
         addedCount++;
       }
-      showToast(`\u5BFC\u5165\u5B8C\u6210: \u6210\u529F\u6DFB\u52A0 ${addedCount} \u4E2A, \u53BB\u91CD\u8DF3\u8FC7 ${skippedCount} \u4E2A`, "success");
+      showToast(`Import complete. Added ${addedCount} tags, skipped duplicates: ${skippedCount} items`, "success");
       await renderManualTags();
       VOCABULARY_MANUAL_TAGS_IMPORT_INPUT.value = "";
     } catch (error) {
       console.error("Error importing manual tags:", error);
-      showToast(`\u5BFC\u5165\u5931\u8D25: ${error.message}`, "error");
+      showToast(`Import failed: ${error.message}`, "error");
       VOCABULARY_MANUAL_TAGS_IMPORT_INPUT.value = "";
     }
   };
@@ -94511,7 +94643,7 @@ function initBananaUI(settingsModal) {
     }
     const bananaSettings2 = getBananaSettings();
     if (bananaSettings2.conversationPresets[newPresetName]) {
-      const overwrite = await stylishConfirm(`\u9884\u8BBE "${newPresetName}" \u5DF2\u5B58\u5728\u3002\u8981\u8986\u76D6\u5B83\u5417?`);
+      const overwrite = await stylishConfirm(`Preset "${newPresetName}" already exists. Overwrite it?`);
       if (!overwrite) {
         toastr.info("Action canceled.");
         return;
@@ -94602,7 +94734,7 @@ function initBananaUI(settingsModal) {
       toastr.warning("Cannot delete the last preset.");
       return;
     }
-    const confirmDelete = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u9884\u8BBE "${presetId}" \u5417? \u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002`);
+    const confirmDelete = await stylishConfirm(`Delete preset "${presetId}" permanently?`);
     if (!confirmDelete) {
       toastr.info("Action canceled.");
       return;
@@ -94679,7 +94811,7 @@ function initBananaUI(settingsModal) {
           let presetName = file.name.replace(/\.json$/, "");
           const bananaSettings2 = getBananaSettings();
           if (bananaSettings2.conversationPresets[presetName]) {
-            const overwrite = await stylishConfirm(`\u9884\u8BBE "${presetName}" \u5DF2\u5B58\u5728\u3002\u8981\u8986\u76D6\u5B83\u5417?`);
+            const overwrite = await stylishConfirm(`Preset "${presetName}" already exists. Overwrite it?`);
             if (!overwrite) {
               presetName = await stylInput("\u8BF7\u8F93\u5165\u65B0\u7684\u9884\u8BBE\u540D\u79F0:", presetName + "_imported");
               if (!presetName || presetName.trim() === "") {
@@ -95101,7 +95233,7 @@ function initBananaPromptReplace() {
   };
   presetSelect.addEventListener("change", async () => {
     if (checkUnsaved()) {
-      const confirmed = await stylishConfirm("\u60A8\u6709\u672A\u4FDD\u5B58\u7684\u66FF\u6362\u89C4\u5219\u3002\u8981\u653E\u5F03\u8FD9\u4E9B\u66F4\u6539\u5E76\u5207\u6362\u9884\u8BBE\u5417\uFF1F");
+      const confirmed = await stylishConfirm("You have unsaved replacement rules. Discard them and switch presets?");
       if (!confirmed) {
         presetSelect.value = bananaSettings.prompt_replace_id;
         return;
@@ -95118,7 +95250,7 @@ function initBananaPromptReplace() {
       toastr.warning("No active replacement rules. Use Save as first.");
       return;
     }
-    const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u8986\u76D6\u5F53\u524D\u66FF\u6362\u89C4\u5219 "${presetId}" \u5417\uFF1F`);
+    const confirmed = await stylishConfirm(`Overwrite replacement rules "${presetId}"?`);
     if (!confirmed) return;
     bananaSettings.prompt_replace[presetId] = { text: textarea.value };
     saveSettingsDebounced51();
@@ -95132,7 +95264,7 @@ function initBananaPromptReplace() {
       return;
     }
     if (bananaSettings.prompt_replace[newName]) {
-      const overwrite = await stylishConfirm(`\u66FF\u6362\u89C4\u5219 "${newName}" \u5DF2\u5B58\u5728\uFF0C\u8981\u8986\u76D6\u5B83\u5417\uFF1F`);
+      const overwrite = await stylishConfirm(`Replacement rules "${newName}" already exists. Overwrite it?`);
       if (!overwrite) return;
     }
     bananaSettings.prompt_replace[newName] = { text: textarea.value };
@@ -95186,7 +95318,7 @@ function initBananaPromptReplace() {
       toastr.warning("Cannot delete default configuration.");
       return;
     }
-    const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u66FF\u6362\u89C4\u5219 "${presetId}" \u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002`);
+    const confirmed = await stylishConfirm(`Delete replacement rules "${presetId}" permanently?`);
     if (!confirmed) return;
     delete bananaSettings.prompt_replace[presetId];
     bananaSettings.prompt_replace_id = "\u9ED8\u8BA4";
@@ -96247,7 +96379,7 @@ function initRunningHubUI(settingsModal) {
       else delete sessionUploadedMedia.imgFiles[idxB];
       saveSettingsDebounced53();
       renderRunningHubImageCards();
-      toastr.success(`\u5DF2\u6210\u529F\u4EA4\u6362 <Picture ${idxA}> \u4E0E <Picture ${idxB}> \u7684\u4F4D\u7F6E\u4E0E\u914D\u7F6E\uFF01`);
+      toastr.success(`Swapped <Picture ${idxA}> and <Picture ${idxB}> positions and settings!`);
     } else if (type === "aud") {
       const ctrlA = settings3[`runninghub_aud_ctrl_${idxA}`] || "bypass";
       settings3[`runninghub_aud_ctrl_${idxA}`] = settings3[`runninghub_aud_ctrl_${idxB}`] || "bypass";
@@ -96270,7 +96402,7 @@ function initRunningHubUI(settingsModal) {
       else delete sessionUploadedMedia.audFiles[idxB];
       saveSettingsDebounced53();
       renderRunningHubAudioCards();
-      toastr.success(`\u5DF2\u6210\u529F\u4EA4\u6362 <Audio ${idxA}> \u4E0E <Audio ${idxB}> \u7684\u4F4D\u7F6E\u4E0E\u914D\u7F6E\uFF01`);
+      toastr.success(`Swapped <Audio ${idxA}> and <Audio ${idxB}> positions and settings!`);
     }
   }
   function renderRunningHubImageCards() {
@@ -96334,7 +96466,7 @@ function initRunningHubUI(settingsModal) {
         } else {
           pendingRunningHubSwap = { type: "img", index: i };
           renderRunningHubImageCards();
-          toastr.info(`\u5DF2\u9009\u4E2D <Picture ${i}>\uFF0C\u8BF7\u70B9\u51FB\u53E6\u4E00\u4E2A\u5361\u7247\u7684\u3010\u4E92\u6362\u3011\u6309\u94AE\uFF08\u518D\u6B21\u70B9\u51FB\u81EA\u8EAB\u53EF\u53D6\u6D88\uFF09`);
+          toastr.info(`Selected <Picture ${i}>. Click Swap on another card, or click this card again to cancel.`);
         }
       });
       $(`#runninghub_img_ctrl_${i}`).on("change", (e) => {
@@ -96362,7 +96494,7 @@ function initRunningHubUI(settingsModal) {
       $(`#runninghub_asset_btn_img_${i}`).on("click", () => {
         openVideoAssetPicker({
           type: "img",
-          title: `<i class="fa-solid fa-photo-film" style="color: #60a5fa;"></i> \u4E3A &lt;Picture ${i}&gt; \u9009\u62E9\u89C6\u9891\u56FE\u7247\u8D44\u4EA7`,
+          title: `<i class="fa-solid fa-photo-film" style="color: #60a5fa;"></i> Choose an asset for &lt;Picture ${i}&gt;`,
           onSelect: async (asset, imageBlob, dataUrl) => {
             const preview = document.getElementById(`runninghub_preview_img_${i}`);
             if (preview && dataUrl) {
@@ -96525,7 +96657,7 @@ function initRunningHubUI(settingsModal) {
         } else {
           pendingRunningHubSwap = { type: "aud", index: i };
           renderRunningHubAudioCards();
-          toastr.info(`\u5DF2\u9009\u4E2D <Audio ${i}>\uFF0C\u8BF7\u70B9\u51FB\u53E6\u4E00\u4E2A\u5361\u7247\u7684\u3010\u4E92\u6362\u3011\u6309\u94AE\uFF08\u518D\u6B21\u70B9\u51FB\u81EA\u8EAB\u53EF\u53D6\u6D88\uFF09`);
+          toastr.info(`Selected <Audio ${i}>. Click Swap on another card, or click this card again to cancel.`);
         }
       });
       $(`#runninghub_aud_ctrl_${i}`).on("change", (e) => {
@@ -96553,7 +96685,7 @@ function initRunningHubUI(settingsModal) {
       $(`#runninghub_asset_btn_aud_${i}`).on("click", () => {
         openVideoAssetPicker({
           type: "aud",
-          title: `<i class="fa-solid fa-music" style="color: #ec4899;"></i> \u4E3A &lt;Audio ${i}&gt; \u9009\u62E9\u89C6\u9891\u97F3\u9891\u8D44\u4EA7`,
+          title: `<i class="fa-solid fa-music" style="color: #ec4899;"></i> Choose an asset for &lt;Audio ${i}&gt;`,
           onSelect: async (asset, audioBlob) => {
             const preview = document.getElementById(`runninghub_preview_aud_${i}`);
             if (preview) {
@@ -96948,7 +97080,7 @@ function initRunningHubUI(settingsModal) {
         alert("Keep at least one workflow preset");
         return;
       }
-      const ok = await stylishConfirm(`\u786E\u5B9A\u5220\u9664\u5DE5\u4F5C\u6D41\u9884\u8BBE "${current}" \u5417\uFF1F`);
+      const ok = await stylishConfirm(`Delete workflow preset "${current}"?`);
       if (ok) {
         delete settings3.runninghub_workers[current];
         if (settings3.runninghub_workflow_ids) delete settings3.runninghub_workflow_ids[current];
@@ -97310,6 +97442,7 @@ function initRunningHubUI(settingsModal) {
         const maskedKey = res.key.length > 12 ? `${res.key.slice(0, 6)}...${res.key.slice(-4)}` : res.key;
         if (res.accountOk || res.queueOk) {
           successCount++;
+          const remainPoint = res.accountData.remainPoint ?? 0;
           const remainCoins = res.accountData.remainCoins ?? "0";
           const remainMoney = res.accountData.remainMoney ?? "0.00";
           const currency = res.accountData.currency || "CNY";
@@ -97328,7 +97461,34 @@ function initRunningHubUI(settingsModal) {
                                                 ${apiType}\n                                            </span>\n                                            <label class=\"st-chatu8-key-pause-label\" style=\"display: inline-flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; color: var(--st-chatu8-text-secondary, #94a3b8); margin-left: 2px;\" title=\"Pause new task assignment for this key\">\n                                                <input type=\"checkbox\" class=\"st-chatu8-key-pause-checkbox\" data-key=\"${escapeHtml6(res.key)}" ${isKeyPaused(res.key) ? "checked" : ""} style=\"cursor: pointer;\" />\n                                                <span>Pause tasks</span>\n                                            </label>\n                                            <div class=\"st-chatu8-rh-limit-group\">\n                                                <span class=\"st-chatu8-rh-limit-label\">\n                                                    <i class=\"fa-solid fa-gauge-high\" style=\"color: #60a5fa; margin-right: 3px; font-size: 10px;\"></i>Local concurrency limit\n                                                </span>\n                                                <div style=\"display: flex; align-items: center; gap: 4px;\">\n                                                    <input type=\"number\" min=\"0\" max=\"100\" class=\"rh-local-limit-input\" \n                                                           data-key=\"${escapeHtml6(res.key)}" 
                                                            value="${localLimit > 0 ? localLimit : ""}\" \n                                                           placeholder=\"Unlimited\" \n                                                           title=\"Limit simultaneous local tasks (blank or 0 follows official limit)\" />\n                                                    <span style=\"font-size: 11px; color: var(--st-chatu8-text-secondary, #94a3b8);\">tasks</span>\n                                                </div>\n                                            </div>\n                                        </div>\n                                    </div>\n                                    <div style=\"display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; align-items: center; margin-bottom: 8px;\">\n                                        <span class=\"st-chatu8-rh-badge\" style=\"background: rgba(20, 184, 166, 0.15); color: #2dd4bf; border-color: rgba(20, 184, 166, 0.25);\">\n                                            🚀 Maximum concurrency: <strong>${limit}</strong>
                                         </span>
-                                        <span class="st-chatu8-rh-badge" style="background: ${available >= 1 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)"}; color: ${available >= 1 ? "#34d399" : "#f87171"}; border-color: ${available >= 1 ? "rgba(16, 185, 129, 0.25)" : "rgba(239, 68, 68, 0.25)"};\">\n                                            🟢 Available slots: <strong>${available}</strong>\n                                        </span>\n                                        <span class=\"st-chatu8-rh-badge\" style=\"background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.25);\">\n                                            ⚡ Remote tasks: <strong>Running ${running} / Queued ${queued}</strong>\n                                        </span>\n                                        <span class=\"st-chatu8-rh-badge\" style=\"background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.25);\">\n                                            🪙 RH coins: <strong>${remainCoins}</strong>\n                                        </span>\n                                        <span class=\"st-chatu8-rh-badge\" style=\"background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.25);\">\n                                            💵 Wallet: <strong>${remainMoney} ${currency}</strong>\n                                        </span>\n                                    </div>\n                                    <div class=\"st-chatu8-rh-badge-grid\" style=\"padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08);\">\n                                        <span class=\"st-chatu8-rh-badge badge-today\">\n                                            📅 Today: <strong>${keyStats.today}</strong> RH\n                                        </span>\n                                        <span class=\"st-chatu8-rh-badge badge-7d\">\n                                            📈 7 days: <strong>${keyStats.sevenDays}</strong> RH\n                                        </span>\n                                        <span class=\"st-chatu8-rh-badge badge-30d\">\n                                            📊 30 days: <strong>${keyStats.thirtyDays}</strong> RH\n                                        </span>\n                                        <span class=\"st-chatu8-rh-badge badge-total\">\n                                            📜 All time: <strong>${keyStats.total}</strong> RH
+                                        <span class="st-chatu8-rh-badge" style="background: ${available >= 1 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)"}; color: ${available >= 1 ? "#34d399" : "#f87171"}; border-color: ${available >= 1 ? "rgba(16, 185, 129, 0.25)" : "rgba(239, 68, 68, 0.25)"};">
+                                            🟢 Available slots: <strong>${available}</strong>
+                                        </span>
+                                        <span class="st-chatu8-rh-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.25);">
+                                            ⚡ Remote tasks: <strong>Running ${running} / Queued ${queued}</strong>
+                                        </span>
+                                        <span class="st-chatu8-rh-badge" style="background: rgba(14, 165, 233, 0.15); color: #38bdf8; border-color: rgba(14, 165, 233, 0.25);">
+                                            🎯 Points: <strong>${remainPoint}</strong>
+                                        </span>
+                                        <span class="st-chatu8-rh-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.25);">
+                                            🪙 RH coins: <strong>${remainCoins}</strong>
+                                        </span>
+                                        <span class="st-chatu8-rh-badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.25);">
+                                            💵 Wallet: <strong>${remainMoney} ${currency}</strong>
+                                        </span>
+                                    </div>
+                                    <div class="st-chatu8-rh-badge-grid" style="padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08);">
+                                        <span class="st-chatu8-rh-badge badge-today">
+                                            📅 Today: <strong>${keyStats.today}</strong> RH
+                                        </span>
+                                        <span class="st-chatu8-rh-badge badge-7d">
+                                            📈 7 days: <strong>${keyStats.sevenDays}</strong> RH
+                                        </span>
+                                        <span class="st-chatu8-rh-badge badge-30d">
+                                            📊 30 days: <strong>${keyStats.thirtyDays}</strong> RH
+                                        </span>
+                                        <span class="st-chatu8-rh-badge badge-total">
+                                            📜 All time: <strong>${keyStats.total}</strong> RH
                                         </span>
                                     </div>
                                 </div>
@@ -98300,7 +98460,7 @@ function initComfyUIVideoUI() {
         alert("Keep at least one workflow preset");
         return;
       }
-      const confirmed = await stylishConfirm(`\u786E\u5B9A\u8981\u5220\u9664\u3010${cat.name}\u3011\u9884\u8BBE "${currentId}" \u5417\uFF1F\u6B64\u64CD\u4F5C\u4E0D\u53EF\u9006\uFF01`);
+      const confirmed = await stylishConfirm(`Delete [${cat.name}] preset "${currentId}" permanently?`);
       if (confirmed) {
         delete settings3.comfyui_video_workers[currentId];
         const remaining = Object.keys(settings3.comfyui_video_workers)[0];
@@ -98373,7 +98533,7 @@ function initComfyUIVideoUI() {
       else delete sessionUploadedMedia2.imgFiles[idxB];
       saveSettingsDebounced54();
       renderComfyUIImageCards();
-      toastr.success(`\u5DF2\u6210\u529F\u4EA4\u6362 <Picture ${idxA}> \u4E0E <Picture ${idxB}> \u7684\u4F4D\u7F6E\u4E0E\u914D\u7F6E\uFF01`);
+      toastr.success(`Swapped <Picture ${idxA}> and <Picture ${idxB}> positions and settings!`);
     } else if (type === "aud") {
       const ctrlA = settings3[`comfyui_aud_ctrl_${idxA}`] || "bypass";
       settings3[`comfyui_aud_ctrl_${idxA}`] = settings3[`comfyui_aud_ctrl_${idxB}`] || "bypass";
@@ -98404,7 +98564,7 @@ function initComfyUIVideoUI() {
       else delete sessionUploadedMedia2.audFiles[idxB];
       saveSettingsDebounced54();
       renderComfyUIAudioCards();
-      toastr.success(`\u5DF2\u6210\u529F\u4EA4\u6362 <Audio ${idxA}> \u4E0E <Audio ${idxB}> \u7684\u4F4D\u7F6E\u4E0E\u914D\u7F6E\uFF01`);
+      toastr.success(`Swapped <Audio ${idxA}> and <Audio ${idxB}> positions and settings!`);
     }
   }
   function renderComfyUIImageCards() {
@@ -98464,7 +98624,7 @@ function initComfyUIVideoUI() {
         } else {
           pendingComfyUISwap = { type: "img", index: i };
           renderComfyUIImageCards();
-          toastr.info(`\u5DF2\u9009\u4E2D <Picture ${i}>\uFF0C\u8BF7\u70B9\u51FB\u53E6\u4E00\u4E2A\u5361\u7247\u7684\u3010\u4E92\u6362\u3011\u6309\u94AE\uFF08\u518D\u6B21\u70B9\u51FB\u81EA\u8EAB\u53EF\u53D6\u6D88\uFF09`);
+          toastr.info(`Selected <Picture ${i}>. Click Swap on another card, or click this card again to cancel.`);
         }
       });
       $(`#${ctrlKey}`).on("change", (e) => {
@@ -98492,7 +98652,7 @@ function initComfyUIVideoUI() {
       $(`#comfyui_img_asset_btn_${i}`).on("click", () => {
         openVideoAssetPicker({
           type: "img",
-          title: `<i class="fa-solid fa-photo-film" style="color: #60a5fa;"></i> \u4E3A &lt;Picture ${i}&gt; \u9009\u62E9\u89C6\u9891\u56FE\u7247\u8D44\u4EA7`,
+          title: `<i class="fa-solid fa-photo-film" style="color: #60a5fa;"></i> Choose an asset for &lt;Picture ${i}&gt;`,
           onSelect: async (asset, imageBlob, dataUrl) => {
             const preview = document.getElementById(`comfyui_preview_img_${i}`);
             if (preview && dataUrl) {
@@ -98640,7 +98800,7 @@ function initComfyUIVideoUI() {
         } else {
           pendingComfyUISwap = { type: "aud", index: i };
           renderComfyUIAudioCards();
-          toastr.info(`\u5DF2\u9009\u4E2D <Audio ${i}>\uFF0C\u8BF7\u70B9\u51FB\u53E6\u4E00\u4E2A\u5361\u7247\u7684\u3010\u4E92\u6362\u3011\u6309\u94AE\uFF08\u518D\u6B21\u70B9\u51FB\u81EA\u8EAB\u53EF\u53D6\u6D88\uFF09`);
+          toastr.info(`Selected <Audio ${i}>. Click Swap on another card, or click this card again to cancel.`);
         }
       });
       $(`#${ctrlKey}`).on("change", (e) => {
@@ -98668,7 +98828,7 @@ function initComfyUIVideoUI() {
       $(`#comfyui_aud_asset_btn_${i}`).on("click", () => {
         openVideoAssetPicker({
           type: "aud",
-          title: `<i class="fa-solid fa-music" style="color: #ec4899;"></i> \u4E3A &lt;Audio ${i}&gt; \u9009\u62E9\u89C6\u9891\u97F3\u9891\u8D44\u4EA7`,
+          title: `<i class="fa-solid fa-music" style="color: #ec4899;"></i> Choose an asset for &lt;Audio ${i}&gt;`,
           onSelect: async (asset, audioBlob) => {
             const preview = document.getElementById(`comfyui_preview_aud_${i}`);
             if (preview) {
@@ -104623,7 +104783,7 @@ function collectElementInfo(element, label) {
   const textContent = element.textContent || "";
   const textPreview = textContent.substring(0, 80) + (textContent.length > 80 ? "..." : "");
   return {
-    label: label || "\u5143\u7D20",
+    label: label || "Element",
     tagName: element.tagName,
     className: element.className || "(\u65E0)",
     id: element.id || "(\u65E0)",
@@ -106394,7 +106554,7 @@ async function onTestRegexClick(requestId, options = {}) {
           \u6B63\u5219: entry.findRegex.substring(0, 50)
         });
         console.warn(`[st-chatu8] \u8DF3\u8FC7\u5371\u9669\u6B63\u5219 "${entry.scriptName}": ${warningNames}`);
-        toastr.warning(`\u8DF3\u8FC7\u5371\u9669\u6B63\u5219 "${entry.scriptName}"<br>\u539F\u56E0: ${warningNames}`, "Regex safety check", {
+        toastr.warning(`Skipped unsafe regex "${entry.scriptName}"<br>Reason: ${warningNames}`, "Regex safety check", {
           timeOut: 5e3,
           escapeHtml: false
         });
@@ -106706,7 +106866,7 @@ ${final_text}`);
     debugLog("regex.onTestRegexClick", "\u6B63\u5219\u5904\u7406\u5931\u8D25", {
       \u9519\u8BEF: e.message
     });
-    timer.end(`\u5904\u7406\u5931\u8D25: ${e.message}`);
+    timer.end(`Processing failed: ${e.message}`);
     toastr.error(`Regex error: ${e.message}`);
     resultText.val(`\u9519\u8BEF: ${e.message}`);
   }
@@ -107410,7 +107570,7 @@ function initKBWorldBookUI(settingsModal) {
           });
           textSpan.append(keyBadge);
         }
-        const eyeIcon = $("<i></i>").addClass("fa fa-eye st-chatu8-entry-view-icon").attr("title", "\u67E5\u770B\u5185\u5BB9").on("click", function(e) {
+        const eyeIcon = $("<i></i>").addClass("fa fa-eye st-chatu8-entry-view-icon").attr("title", "View content").on("click", function(e) {
           e.stopPropagation();
           showEntryContentModal(displayName, entry.content || "", entry.key || [], isConstant);
         });
@@ -107908,7 +108068,7 @@ function displayKBTestResult(container, knowledgeBaseData, triggerText) {
           "border-color": "rgba(158, 158, 158, 0.3)",
           "color": "#9e9e9e"
         });
-        $btn.attr("title", "\u70B9\u51FB\u542F\u7528\u6B64\u6761\u76EE");
+        $btn.attr("title", "Click to enable this entry");
         toastr.info(`Entry disabled (World Info: ${worldName})`);
       } else {
         $btn.html("<i class=\"fa-solid fa-ban\"></i> Disabled");
@@ -107917,7 +108077,7 @@ function displayKBTestResult(container, knowledgeBaseData, triggerText) {
           "border-color": "rgba(255, 152, 0, 0.3)",
           "color": "#ff9800"
         });
-        $btn.attr("title", "\u7981\u7528\u6B64\u6761\u76EE");
+        $btn.attr("title", "Disable this entry");
         toastr.success(`Entry enabled (World Info: ${worldName})`);
       }
     } catch (err) {
@@ -108471,7 +108631,7 @@ function initProfileControls(settingsModal) {
     if (!name || name.trim() === "") return;
     const trimmedName = name.trim();
     if (settings3.novelai_profiles[trimmedName]) {
-      const overwrite = await stylishConfirm("\u786E\u8BA4\u8986\u76D6", `\u914D\u7F6E "${trimmedName}" \u5DF2\u5B58\u5728\uFF0C\u662F\u5426\u8986\u76D6\uFF1F`);
+      const overwrite = await stylishConfirm("Confirm overwrite", `Configuration "${trimmedName}" already exists. Overwrite it?`);
       if (!overwrite) return;
     }
     settings3.novelai_profiles[trimmedName] = collectNovelaiProfile();
@@ -108485,7 +108645,7 @@ function initProfileControls(settingsModal) {
     if (!select) return;
     const profileId = select.value;
     if (!profileId) return;
-    const confirmed = await stylishConfirm("\u786E\u8BA4\u4FDD\u5B58", `\u786E\u5B9A\u8981\u5C06\u5F53\u524D\u6240\u6709\u8BBE\u7F6E\u4FDD\u5B58\u5E76\u8986\u76D6\u5230\u914D\u7F6E "${profileId}" \u4E2D\u5417\uFF1F`);
+    const confirmed = await stylishConfirm("Confirm save", `Save all current settings over configuration "${profileId}"?`);
     if (!confirmed) return;
     settings3.novelai_profiles[profileId] = collectNovelaiProfile();
     saveSettingsDebounced63();
@@ -108499,7 +108659,7 @@ function initProfileControls(settingsModal) {
       toastr.warning("Cannot delete default configuration");
       return;
     }
-    const confirmed = await stylishConfirm("\u786E\u8BA4\u5220\u9664", `\u786E\u5B9A\u8981\u5220\u9664\u914D\u7F6E "${profileId}" \u5417\uFF1F`);
+    const confirmed = await stylishConfirm("Confirm deletion", `Delete configuration "${profileId}"?`);
     if (!confirmed) return;
     delete settings3.novelai_profiles[profileId];
     settings3.novelai_profile_id = "\u9ED8\u8BA4";
@@ -108533,7 +108693,7 @@ function initProfileControls(settingsModal) {
     if (!name || name.trim() === "") return;
     const trimmedName = name.trim();
     if (settings3.comfyui_profiles[trimmedName]) {
-      const overwrite = await stylishConfirm("\u786E\u8BA4\u8986\u76D6", `\u914D\u7F6E "${trimmedName}" \u5DF2\u5B58\u5728\uFF0C\u662F\u5426\u8986\u76D6\uFF1F`);
+      const overwrite = await stylishConfirm("Confirm overwrite", `Configuration "${trimmedName}" already exists. Overwrite it?`);
       if (!overwrite) return;
     }
     settings3.comfyui_profiles[trimmedName] = collectComfyuiProfile();
@@ -108547,7 +108707,7 @@ function initProfileControls(settingsModal) {
     if (!select) return;
     const profileId = select.value;
     if (!profileId) return;
-    const confirmed = await stylishConfirm("\u786E\u8BA4\u4FDD\u5B58", `\u786E\u5B9A\u8981\u5C06\u5F53\u524D\u6240\u6709\u8BBE\u7F6E\u4FDD\u5B58\u5E76\u8986\u76D6\u5230\u914D\u7F6E "${profileId}" \u4E2D\u5417\uFF1F`);
+    const confirmed = await stylishConfirm("Confirm save", `Save all current settings over configuration "${profileId}"?`);
     if (!confirmed) return;
     settings3.comfyui_profiles[profileId] = collectComfyuiProfile();
     saveSettingsDebounced63();
@@ -108561,7 +108721,7 @@ function initProfileControls(settingsModal) {
       toastr.warning("Cannot delete default configuration");
       return;
     }
-    const confirmed = await stylishConfirm("\u786E\u8BA4\u5220\u9664", `\u786E\u5B9A\u8981\u5220\u9664\u914D\u7F6E "${profileId}" \u5417\uFF1F`);
+    const confirmed = await stylishConfirm("Confirm deletion", `Delete configuration "${profileId}"?`);
     if (!confirmed) return;
     delete settings3.comfyui_profiles[profileId];
     settings3.comfyui_profile_id = "\u9ED8\u8BA4";
@@ -108596,7 +108756,7 @@ function initProfileControls(settingsModal) {
     const trimmedName = name.trim();
     if (!settings3.runninghub_profiles) settings3.runninghub_profiles = {};
     if (settings3.runninghub_profiles[trimmedName]) {
-      const overwrite = await stylishConfirm("\u786E\u8BA4\u8986\u76D6", `\u914D\u7F6E "${trimmedName}" \u5DF2\u5B58\u5728\uFF0C\u662F\u5426\u8986\u76D6\uFF1F`);
+      const overwrite = await stylishConfirm("Confirm overwrite", `Configuration "${trimmedName}" already exists. Overwrite it?`);
       if (!overwrite) return;
     }
     settings3.runninghub_profiles[trimmedName] = collectRunninghubProfile();
@@ -108610,7 +108770,7 @@ function initProfileControls(settingsModal) {
     if (!select) return;
     const profileId = select.value;
     if (!profileId) return;
-    const confirmed = await stylishConfirm("\u786E\u8BA4\u4FDD\u5B58", `\u786E\u5B9A\u8981\u5C06\u5F53\u524D\u6240\u6709\u8BBE\u7F6E\u4FDD\u5B58\u5E76\u8986\u76D6\u5230\u914D\u7F6E "${profileId}" \u4E2D\u5417\uFF1F`);
+    const confirmed = await stylishConfirm("Confirm save", `Save all current settings over configuration "${profileId}"?`);
     if (!confirmed) return;
     if (!settings3.runninghub_profiles) settings3.runninghub_profiles = {};
     settings3.runninghub_profiles[profileId] = collectRunninghubProfile();
@@ -108625,7 +108785,7 @@ function initProfileControls(settingsModal) {
       toastr.warning("Cannot delete default configuration");
       return;
     }
-    const confirmed = await stylishConfirm("\u786E\u8BA4\u5220\u9664", `\u786E\u5B9A\u8981\u5220\u9664\u914D\u7F6E "${profileId}" \u5417\uFF1F`);
+    const confirmed = await stylishConfirm("Confirm deletion", `Delete configuration "${profileId}"?`);
     if (!confirmed) return;
     delete settings3.runninghub_profiles[profileId];
     settings3.runninghub_profile_id = "\u9ED8\u8BA4";
@@ -110814,7 +110974,7 @@ async function initUI({ check_update: check_update2 }) {
       await showConfigStorageCleanupModal();
     } catch (e) {
       console.error("[ConfigDB \u6E05\u7406] \u6253\u5F00\u5931\u8D25:", e);
-      showToast(`\u6253\u5F00\u6E05\u7406\u9762\u677F\u5931\u8D25: ${e.message}`, "error");
+      showToast(`Failed to open cleanup panel: ${e.message}`, "error");
     } finally {
       button.prop("disabled", false).text(originalText2);
     }
@@ -110857,7 +111017,7 @@ async function initUI({ check_update: check_update2 }) {
         const lines = ["\u540C\u6B65\u5B8C\u6210\uFF01"];
         if (result.deletedCount > 0) lines.push(`\u5220\u9664\u4E86 ${result.deletedCount} \u4E2A\u670D\u52A1\u5668\u5B64\u513F\u56FE\u7247`);
         if (ghost > 0) lines.push(`\u4ECE\u5217\u8868\u6E05\u7406\u4E86 ${ghost} \u4E2A\u670D\u52A1\u5668\u5DF2\u4E0D\u5B58\u5728\u7684\u5E7D\u7075\u6761\u76EE`);
-        if (result.errors.length > 0) lines.push(`\u5931\u8D25 ${result.errors.length} \u4E2A`);
+        if (result.errors.length > 0) lines.push(`Failed: ${result.errors.length} items`);
         alert(lines.join("\n"));
       } else {
         alert("Sync complete! All images synchronized; no cleanup needed.");
@@ -111370,7 +111530,7 @@ async function initUI({ check_update: check_update2 }) {
   });
   $("#chatu8_fab_reset_position").on("click", () => {
     centerFabPosition();
-    showToast("\u667A\u7ED8\u59EC\u4F4D\u7F6E\u5DF2\u91CD\u7F6E\u5230\u5C4F\u5E55\u4E2D\u592E", "success");
+    showToast("AI assistant moved to the center of the screen", "success");
   });
   allIDs.forEach((key) => {
     if (ignoreIDs.includes(key)) return;
@@ -111440,7 +111600,7 @@ async function initUI({ check_update: check_update2 }) {
   settingsModal.find("#nai3CharRef").on("change", function() {
     const checkbox = $(this);
     if (checkbox.prop("checked")) {
-      stylishConfirm("\u4E0D\u5EFA\u8BAE\u4F7F\u7528\uFF0C\u6BCF\u591A\u4E00\u5F20\u53C2\u8003\u56FE\u7247\u5C31\u591A\u6536\u8D395\u70B9\uFF0C\u6BCF\u6B21\u751F\u56FE\u6536\u8D39\u4E00\u6B21\uFF01").then((confirmed) => {
+      stylishConfirm("Each extra reference image costs 5 additional credits per generation.").then((confirmed) => {
         if (confirmed) {
           settings2.nai3CharRef = "true";
           if (settings2.enableVibeGroupTransfer === "true") {
@@ -111948,7 +112108,7 @@ function setUpdateStatus(text, cls) {
     el.className = `st-chatu8-update-status ${cls || ""}`.trim();
   }
 }
-var REINSTALL_GIT_URL = "https://github.com/damoshen123/st-chatu8.git";
+var REINSTALL_GIT_URL = "https://github.com/suirenv310/st-chatu8.git";
 function showReinstallGuide(reason) {
   const existing = document.getElementById("st-chatu8-reinstall-guide");
   if (existing) existing.remove();
@@ -112035,18 +112195,18 @@ async function check_update() {
   const global = type === "global";
   const reload = () => {
     toastr.success(`Extension updated; page reload in 4 seconds`);
-    console.log(`\u6210\u529F\u66F4\u65B0\u63D2\u4EF6`);
-    setUpdateStatus("\u2705 \u66F4\u65B0\u6210\u529F\uFF0C\u6B63\u5728\u5237\u65B0\u9875\u9762...", "uptodate");
+    console.log(`Extension updated`);
+    setUpdateStatus("✅ Updated. Refreshing the page...", "uptodate");
     setTimeout(() => location.reload(), 4e3);
   };
   let update_response;
   try {
     update_response = await update_extension(extensionName, global);
   } catch (err) {
-    console.error("\u8C03\u7528\u66F4\u65B0\u63A5\u53E3\u5931\u8D25\uFF1A", err);
+    console.error("Update request failed: ", err);
     toastr.error(`Cannot reach SillyTavern update endpoint: ${err && err.message ? err.message : err}`, "Update failed");
-    setUpdateStatus("\u274C \u65E0\u6CD5\u8FDE\u63A5\u5230\u9152\u9986\u66F4\u65B0\u63A5\u53E3", "error");
-    showReinstallGuide(`\u65E0\u6CD5\u8FDE\u63A5\u5230\u9152\u9986\u66F4\u65B0\u63A5\u53E3\uFF1A${err && err.message ? err.message : err}`);
+    setUpdateStatus("❌ Cannot reach the SillyTavern update endpoint", "error");
+    showReinstallGuide(`Cannot reach the SillyTavern update endpoint: ${err && err.message ? err.message : err}`);
     return false;
   }
   if (!update_response.ok) {
@@ -112059,24 +112219,24 @@ async function check_update() {
     console.error(`\u66F4\u65B0\u5931\u8D25 ${status}:`, errText);
     if (status === 403) {
       toastr.error("No permission to update global extensions. Log in as an administrator.", "Update failed");
-      setUpdateStatus("\u274C \u6CA1\u6709\u66F4\u65B0\u6743\u9650\uFF08\u9700\u8981\u7BA1\u7406\u5458\uFF09", "error");
-      showReinstallGuide("\u5F53\u524D\u7528\u6237\u6CA1\u6709\u66F4\u65B0\u5168\u5C40\u63D2\u4EF6\u7684\u6743\u9650\uFF08\u9700\u8981\u7BA1\u7406\u5458\u8D26\u53F7\uFF09\u3002");
+      setUpdateStatus("❌ Administrator permission is required to update", "error");
+      showReinstallGuide("Updating a global extension requires an administrator account.");
     } else if (status === 404) {
       toastr.error("Extension directory missing. Install using Install extension (git clone), rather than copying a folder manually.", "Update failed");
-      setUpdateStatus("\u274C \u63D2\u4EF6\u76EE\u5F55\u4E0D\u5B58\u5728\u6216\u4E0D\u662F Git \u4ED3\u5E93", "error");
-      showReinstallGuide("\u672A\u627E\u5230\u63D2\u4EF6\u76EE\u5F55\uFF0C\u6216\u5F53\u524D\u5B89\u88C5\u65B9\u5F0F\u4E0D\u662F\u901A\u8FC7 git \u514B\u9686\u3002");
+      setUpdateStatus("❌ Extension directory is missing or is not a Git checkout", "error");
+      showReinstallGuide("Extension directory missing, or the extension was installed without Git.");
     } else if (status === 500) {
       toastr.error(
         "SillyTavern git operation failed. Check GitHub access, repository status, and uncommitted changes. You may need to reinstall using Install extension.",
         "Update failed",
         { timeOut: 12e3, extendedTimeOut: 6e3 }
       );
-      setUpdateStatus("\u274C \u670D\u52A1\u7AEF git \u66F4\u65B0\u5931\u8D25\uFF0C\u8BF7\u67E5\u770B\u63A7\u5236\u53F0/\u65E5\u5FD7", "error");
-      showReinstallGuide("\u9152\u9986\u540E\u7AEF git \u66F4\u65B0\u5931\u8D25\uFF08\u7F51\u7EDC/\u4ED3\u5E93\u72B6\u6001/\u6743\u9650\u95EE\u9898\uFF09\u3002");
+      setUpdateStatus("❌ Server Git update failed. Check the console or logs.", "error");
+      showReinstallGuide("SillyTavern could not update the Git checkout. Check network access, repository state and permissions.");
     } else {
       toastr.error(`Update failed (${status}): ${errText || update_response.statusText}`, "Update failed");
-      setUpdateStatus(`\u274C \u66F4\u65B0\u5931\u8D25 (${status})`, "error");
-      showReinstallGuide(`\u66F4\u65B0\u5931\u8D25 (${status})\uFF1A${errText || update_response.statusText || ""}`);
+      setUpdateStatus(`❌ Update failed (${status})`, "error");
+      showReinstallGuide(`Update failed (${status})\uFF1A${errText || update_response.statusText || ""}`);
     }
     return false;
   }
@@ -112084,10 +112244,10 @@ async function check_update() {
   try {
     result = await update_response.json();
   } catch (e) {
-    console.error("\u89E3\u6790\u66F4\u65B0\u54CD\u5E94\u5931\u8D25\uFF1A", e);
+    console.error("Failed to parse update response: ", e);
     toastr.error("Cannot parse update response", "Update failed");
-    setUpdateStatus("\u274C \u66F4\u65B0\u54CD\u5E94\u89E3\u6790\u5931\u8D25", "error");
-    showReinstallGuide("\u66F4\u65B0\u54CD\u5E94\u89E3\u6790\u5931\u8D25");
+    setUpdateStatus("❌ Failed to parse update response", "error");
+    showReinstallGuide("Failed to parse update response");
     return false;
   }
   if (result.isUpToDate) {
@@ -112100,12 +112260,12 @@ async function check_update() {
         "Update not applied",
         { timeOut: 15e3, extendedTimeOut: 8e3 }
       );
-      setUpdateStatus(`\u26A0\uFE0F \u68C0\u6D4B\u5230\u65B0\u7248\u672C v${remote}\uFF0C\u4F46\u66F4\u65B0\u672A\u751F\u6548\uFF0C\u8BF7\u624B\u52A8\u91CD\u88C5`, "error");
-      showReinstallGuide(`\u68C0\u6D4B\u5230\u65B0\u7248\u672C v${remote}\uFF0C\u4F46 git \u66F4\u65B0\u672A\u751F\u6548\uFF08\u5F53\u524D\u4ECD\u4E3A v${local}\uFF09\u3002`);
+      setUpdateStatus(`⚠️ New version v${remote} detected, but the update did not apply. Reinstall manually.`, "error");
+      showReinstallGuide(`New version v${remote} detected, but Git did not apply the update (still v${local}\uFF09\u3002`);
       return false;
     }
     toastr.success("Extension is up to date");
-    console.log("\u63D2\u4EF6\u662F\u6700\u65B0\u7248\u672C");
+    console.log("Extension is up to date");
     setUpdateStatus(`\u2705 \u5DF2\u662F\u6700\u65B0\u7248\u672C v${local || ""}`.trim(), "uptodate");
     return true;
   }
@@ -112157,7 +112317,7 @@ async function checkForUpdates2() {
   const updateNotesElement = document.getElementById("ch-update-notes");
   console.log("Checking for updates...", updateNotesElement);
   try {
-    const remoteManifestUrl = `https://raw.githubusercontent.com/damoshen123/st-chatu8/master/manifest.json?t=${(/* @__PURE__ */ new Date()).getTime()}`;
+    const remoteManifestUrl = `https://raw.githubusercontent.com/suirenv310/st-chatu8/main/manifest.json?t=${(/* @__PURE__ */ new Date()).getTime()}`;
     const response = await fetch(remoteManifestUrl, { cache: "no-cache" });
     if (!response.ok) {
       console.error("Failed to fetch remote manifest for update check.");
