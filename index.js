@@ -20,6 +20,7 @@
  * 尊重原创，从你我做起。
  * ====================================================
  */
+import { optionLabel } from "./ui-labels.js";
 import { generatePixaiImage, initPixaiSettings } from "./pixai.js";
 import { appearanceOptions, readAppearanceSources, appendAppearanceReferences, initAppearanceUI } from "./appearance.js";
 import { injectSubjectRule, subjectReferenceTraits, lookupInstalledDanbooru } from "./appearance-tags.js";
@@ -3529,7 +3530,7 @@ async function tailStep(options) {
   if (!options || options.__tailRun !== true) return;
   const stepJob = options.__tailJob;
   if (stepJob && stepJob.canceled) {
-    throw new Error("\u6536\u5C3E\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+    throw new Error("Finalization task cancelled");
   }
   if (_tailState && _tailState.flushing) return;
   await tailYield();
@@ -4704,7 +4705,7 @@ async function setItemImg(tag, imgBase64, options = { format: "png" }) {
         await updateStegoImage({ throwOnError: true });
       } catch (stegoError) {
         const stegoMessage = stegoError?.message ? stegoError.message : String(stegoError);
-        const wrapped = new Error("\u9690\u5199\u7D22\u5F15\u5199\u5165\u5931\u8D25\uFF08\u56FE\u7247\u4E0E\u7D22\u5F15\u672C\u8EAB\u5DF2\u4FDD\u5B58\uFF09: " + stegoMessage);
+        const wrapped = new Error("Failed to embed the index (the image and index were saved): " + stegoMessage);
         wrapped.__chatu8TailFailureKind = "stego";
         throw wrapped;
       }
@@ -4999,7 +5000,7 @@ function awaitIdbRequest(request, transaction = null, timeoutMs = 3e4) {
           }
         } catch (_) {
         }
-        reject(new Error(`[IDB] \u64CD\u4F5C\u8D85\u65F6\u7194\u65AD (${timeoutMs}ms)`));
+        reject(new Error(`[IDB] Operation timed out (${timeoutMs}ms)`));
       }, timeoutMs);
     }
     request.onsuccess = (event) => {
@@ -5010,19 +5011,19 @@ function awaitIdbRequest(request, transaction = null, timeoutMs = 3e4) {
     request.onerror = (event) => {
       if (settled) return;
       cleanup();
-      reject(event.target.error || new Error("[IDB] Request \u9519\u8BEF"));
+      reject(event.target.error || new Error("[IDB] Request failed"));
     };
     if (transaction) {
       transaction.onabort = (event) => {
         if (settled) return;
         cleanup();
-        const err = transaction.error || event && event.target && event.target.error || new Error("[IDB] Transaction \u4E8B\u52A1\u88AB\u4E2D\u6B62 (onabort)");
+        const err = transaction.error || event && event.target && event.target.error || new Error("[IDB] Transaction aborted (onabort)");
         reject(err);
       };
       transaction.onerror = (event) => {
         if (settled) return;
         cleanup();
-        reject(transaction.error || event && event.target && event.target.error || new Error("[IDB] Transaction \u9519\u8BEF"));
+        reject(transaction.error || event && event.target && event.target.error || new Error("[IDB] Transaction failed"));
       };
     }
   });
@@ -5036,7 +5037,7 @@ async function openDB() {
     const openTimeout = setTimeout(() => {
       if (!settled) {
         settled = true;
-        reject(new Error("[DB] \u6253\u5F00\u6570\u636E\u5E93\u8D85\u65F6 (30000ms)\uFF0C\u53EF\u80FD\u88AB\u540E\u53F0\u5347\u7EA7\u6216\u8FDE\u63A5\u6B7B\u9501\u963B\u6B62"));
+        reject(new Error("[DB] Database open timed out (30000ms). A background upgrade or blocked connection may be preventing access."));
       }
     }, 3e4);
     const cleanupTimer = () => {
@@ -5155,7 +5156,7 @@ async function deleteTagByName(tagName) {
       }
     };
     request.onerror = (event) => reject(event.target.error);
-    transaction.onabort = () => reject(new Error("[IDB] \u5220\u9664\u6807\u7B7E\u4E8B\u52A1\u88AB\u4E2D\u6B62"));
+    transaction.onabort = () => reject(new Error("[IDB] Tag deletion transaction aborted"));
   });
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => {
@@ -5166,7 +5167,7 @@ async function deleteTagByName(tagName) {
       }
     };
     transaction.onerror = (event) => reject(event.target.error);
-    transaction.onabort = () => reject(new Error("[IDB] \u5220\u9664\u6807\u7B7E\u4E8B\u52A1\u88AB\u4E2D\u6B62"));
+    transaction.onabort = () => reject(new Error("[IDB] Tag deletion transaction aborted"));
   });
 }
 async function storeReadOnly(id) {
@@ -5934,7 +5935,7 @@ async function runSizeCalculation(options = {}) {
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
-    report.errors.push(`\u7EDF\u8BA1\u8BB0\u5F55\u6570\u5931\u8D25: ${e.message}`);
+    report.errors.push(`Failed to count records: ${e.message}`);
   }
   let lastKey = null;
   let scanned = 0;
@@ -6060,7 +6061,7 @@ async function runSizeCalculation(options = {}) {
       if (e.name === "AbortError") throw e;
     }
     if (remote) {
-      throw new Error("HEAD \u4E0D\u53EF\u7528\uFF0C\u4E91\u9152\u9986\u4E0B\u8DF3\u8FC7\uFF08\u907F\u514D\u4E0B\u8F7D\u6574\u56FE\uFF09");
+      throw new Error("HEAD is unavailable; skipping the cloud storage size check to avoid downloading the full image");
     }
     const res = await fetch(path, { signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -6076,7 +6077,7 @@ async function runSizeCalculation(options = {}) {
     try {
       await updateStegoImage();
     } catch (e) {
-      report.errors.push(`\u66F4\u65B0\u9690\u5199\u56FE\u7247\u5931\u8D25: ${e.message}`);
+      report.errors.push(`Failed to update embedded image data: ${e.message}`);
     }
   };
   if (serverTargets.length > 0) {
@@ -6133,7 +6134,7 @@ async function runSizeCalculation(options = {}) {
     try {
       await updateStegoImage();
     } catch (e) {
-      report.errors.push(`\u66F4\u65B0\u9690\u5199\u56FE\u7247\u5931\u8D25: ${e.message}`);
+      report.errors.push(`Failed to update embedded image data: ${e.message}`);
     }
   }
   emit("done", 1, 1, "\u7EDF\u8BA1\u5B8C\u6210");
@@ -6709,7 +6710,7 @@ async function syncServerImagesWithStorage(folderName = "chatu8", onProgress = n
       body: JSON.stringify({ folder: folderName, type: 7 })
     });
     if (!response.ok) {
-      throw new Error(`\u83B7\u53D6\u670D\u52A1\u5668\u56FE\u7247\u5217\u8868\u5931\u8D25: ${response.statusText}`);
+      throw new Error(`Failed to fetch the server image list: ${response.statusText}`);
     }
     const serverImageNames = await response.json();
     if (!Array.isArray(serverImageNames)) {
@@ -6907,12 +6908,12 @@ async function syncServerImagesWithStorage(folderName = "chatu8", onProgress = n
           result.deletedCount++;
           console.log(`[Sync] \u5DF2\u4E0D\u5B58\u5728(\u89C6\u4E3A\u5DF2\u5220\u9664): ${fullPath}`);
         } else {
-          const error = `\u5220\u9664\u5931\u8D25 (${deleteResponse.status}): ${fullPath}`;
+          const error = `Deletion failed (${deleteResponse.status}): ${fullPath}`;
           result.errors.push(error);
           console.error(`[Sync] ${error}`);
         }
       } catch (error) {
-        const errorMsg = `\u5220\u9664\u5F02\u5E38: ${fileName} - ${error.message}`;
+        const errorMsg = `Deletion error: ${fileName} - ${error.message}`;
         result.errors.push(errorMsg);
         console.error(`[Sync] ${errorMsg}`);
       }
@@ -7047,7 +7048,7 @@ async function uploadStegoImage(imageBase64) {
     })
   });
   if (!response.ok) {
-    throw new Error(`\u4E0A\u4F20\u5931\u8D25: ${response.statusText}`);
+    throw new Error(`Upload failed: ${response.statusText}`);
   }
   const result = await response.json();
   console.log("[Stego] \u56FE\u7247\u4E0A\u4F20\u6210\u529F:", result.path);
@@ -7350,7 +7351,7 @@ async function toFilePayload(data, options = {}) {
     const base64 = commaIndex > -1 && data.startsWith("data:") ? data.slice(commaIndex + 1) : data;
     blob = new Blob([base64ToArrayBuffer2(base64)], { type: sourceMime || mimeType });
   } else {
-    throw new TypeError("\u914D\u7F6E\u6587\u4EF6\u6570\u636E\u5FC5\u987B\u662F Blob\u3001ArrayBuffer \u6216 Base64 \u5B57\u7B26\u4E32");
+    throw new TypeError("Configuration data must be a Blob, ArrayBuffer, or Base64 string");
   }
   return { blob, mimeType: blob.type || mimeType, size: blob.size };
 }
@@ -7398,15 +7399,15 @@ async function saveConfigFile(data, options = {}) {
   return id;
 }
 async function getConfigFile(id, options = {}) {
-  if (!id) throw Object.assign(new Error("\u914D\u7F6E\u6587\u4EF6 ID \u4E3A\u7A7A"), { code: "INVALID_ID" });
+  if (!id) throw Object.assign(new Error("Configuration file ID is empty"), { code: "INVALID_ID" });
   const expectedKind = options.kind;
   const serverEntry = extension_settings2[extensionName]?.configImageStorage?.[id];
   if (serverEntry?.path) {
     const response = await fetch(serverEntry.path);
-    if (!response.ok) throw Object.assign(new Error(`\u914D\u7F6E\u6587\u4EF6\u4E0D\u5B58\u5728: ${id}`), { code: "NOT_FOUND" });
+    if (!response.ok) throw Object.assign(new Error(`Configuration file not found: ${id}`), { code: "NOT_FOUND" });
     const blob = await response.blob();
     const kind2 = serverEntry.kind || inferKindFromId(id, serverEntry.mimeType || blob.type);
-    if (expectedKind && kind2 !== expectedKind) throw Object.assign(new Error(`\u914D\u7F6E\u6587\u4EF6\u7C7B\u578B\u4E0D\u5339\u914D: ${id}`), { code: "TYPE_MISMATCH" });
+    if (expectedKind && kind2 !== expectedKind) throw Object.assign(new Error(`Configuration file type mismatch: ${id}`), { code: "TYPE_MISMATCH" });
     let data = blob;
     if (kind2 === "audio") {
       data = new Blob([await blob.arrayBuffer()], { type: serverEntry.mimeType || "audio/mpeg" });
@@ -7415,13 +7416,13 @@ async function getConfigFile(id, options = {}) {
     return { id, data, kind: kind2, mimeType: serverEntry.mimeType || data.type || "application/octet-stream", fileName: serverEntry.fileName || id, size: serverEntry.size ?? data.size };
   }
   const entry = await dbReadConfigImage(id);
-  if (!entry) throw Object.assign(new Error(`\u914D\u7F6E\u6587\u4EF6\u4E0D\u5B58\u5728: ${id}`), { code: "NOT_FOUND" });
+  if (!entry) throw Object.assign(new Error(`Configuration file not found: ${id}`), { code: "NOT_FOUND" });
   let target = entry;
   if (entry.data && typeof entry.data === "object" && !(entry.data instanceof Blob) && !(entry.data instanceof ArrayBuffer) && !ArrayBuffer.isView(entry.data) && "data" in entry.data) {
     target = entry.data;
   }
   const kind = target.kind || entry.kind || inferKindFromId(id, target.mimeType || entry.mimeType);
-  if (expectedKind && kind !== expectedKind) throw Object.assign(new Error(`\u914D\u7F6E\u6587\u4EF6\u7C7B\u578B\u4E0D\u5339\u914D: ${id}`), { code: "TYPE_MISMATCH" });
+  if (expectedKind && kind !== expectedKind) throw Object.assign(new Error(`Configuration file type mismatch: ${id}`), { code: "TYPE_MISMATCH" });
   const mimeType = target.mimeType || entry.mimeType || (kind === "audio" ? "audio/mpeg" : "image/png");
   let raw;
   const rawData = target.data !== void 0 ? target.data : entry.data;
@@ -7979,7 +7980,7 @@ async function getChatIndex() {
 }
 async function saveChatData(chatId, chatData) {
   if (!chatId) {
-    throw new Error("[ConfigDB] saveChatData: chatId \u4E0D\u80FD\u4E3A\u7A7A");
+    throw new Error("[ConfigDB] saveChatData: chatId cannot be empty");
   }
   const storageKey = `ai_chat_data_${chatId}`;
   await _saveJsonData(storageKey, chatData);
@@ -8032,7 +8033,7 @@ async function getLogIndex() {
 }
 async function saveLogSessionData(sessionId, sessionData) {
   if (!sessionId) {
-    throw new Error("[ConfigDB] saveLogSessionData: sessionId \u4E0D\u80FD\u4E3A\u7A7A");
+    throw new Error("[ConfigDB] saveLogSessionData: sessionId cannot be empty");
   }
   const storageKey = `log_session_data_${sessionId}`;
   await _saveJsonData(storageKey, sessionData);
@@ -8285,7 +8286,7 @@ async function migrateV1ToV2() {
       chatSessions2 = oldData;
     } else {
       console.warn("[ConfigDB] \u65E7\u6570\u636E\u683C\u5F0F\u65E0\u6CD5\u8BC6\u522B\uFF0C\u8DF3\u8FC7\u8FC1\u79FB");
-      return { success: false, migratedChats: 0, migratedImages: 0, error: "\u65E7\u6570\u636E\u683C\u5F0F\u65E0\u6CD5\u8BC6\u522B" };
+      return { success: false, migratedChats: 0, migratedImages: 0, error: "Unrecognized legacy data format" };
     }
     let migratedChats = 0;
     let migratedImages = 0;
@@ -8844,7 +8845,7 @@ async function getSDMode(sdurl) {
     });
     if (!result.ok) {
       const errorText = await result.text();
-      throw new Error(`\u83B7\u53D6 SD \u9009\u9879\u5931\u8D25\uFF0C\u72B6\u6001\u7801: ${result.status}, \u54CD\u5E94: ${errorText}`);
+      throw new Error(`Failed to fetch SD options. HTTP status: ${result.status}, response: ${errorText}`);
     }
     const data = await result.json();
     const model = data["sd_model_checkpoint"];
@@ -8882,7 +8883,7 @@ async function setSDMode(sdurl, model) {
     });
     if (!result.ok) {
       const errorText = await result.text();
-      addLog(`\u5207\u6362 SD \u6A21\u578B API \u8BF7\u6C42\u5931\u8D25\u3002\u72B6\u6001\u7801: ${result.status}, \u54CD\u5E94: ${errorText}`);
+      addLog(`\u5207\u6362 SD \u6A21\u578B API \u8BF7\u6C42\u5931\u8D25\u3002\u72B6\u6001\u7801: ${result.status}, response: ${errorText}`);
       throw new Error(`SD WebUI returned an error. Status: ${result.status}`);
     }
     const MAX_ATTEMPTS = 10;
@@ -8970,9 +8971,9 @@ async function processReferenceImage(inputBase64) {
       resolve(processedBase64);
     };
     img.onerror = (err) => {
-      const errorMessage = err instanceof Error ? err.message : "\u672A\u77E5\u9519\u8BEF";
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
       addLog(`\u53C2\u8003\u56FE\u52A0\u8F7D\u5931\u8D25: ${errorMessage}`);
-      reject(new Error("\u56FE\u7247\u52A0\u8F7D\u5931\u8D25"));
+      reject(new Error("Image loading failed"));
     };
     let imgSrc = inputBase64;
     if (inputBase64 && !inputBase64.startsWith("data:image")) {
@@ -9397,7 +9398,7 @@ function evaluateCondition(expr, haystack) {
       const v = parseOr();
       skipWs();
       if (src[pos] === ")") pos++;
-      else throw new Error("@if \u8868\u8FBE\u5F0F\u7F3A\u5C11\u53F3\u62EC\u53F7");
+      else throw new Error("Missing closing parenthesis in @if expression");
       return v;
     }
     if (src[pos] === '"') {
@@ -9409,7 +9410,7 @@ function evaluateCondition(expr, haystack) {
           pos += 2;
         } else buf += src[pos++];
       }
-      if (src[pos] !== '"') throw new Error("@if \u8868\u8FBE\u5F0F\u7F3A\u5C11\u53F3\u5F15\u53F7");
+      if (src[pos] !== '"') throw new Error("Missing closing quote in @if expression");
       pos++;
       return hay.includes(buf.toLowerCase());
     }
@@ -9421,12 +9422,12 @@ function evaluateCondition(expr, haystack) {
       pos++;
     }
     const word = src.substring(start, pos).trim();
-    if (!word) throw new Error("@if \u8868\u8FBE\u5F0F\u5B58\u5728\u7A7A\u7684\u89E6\u53D1\u8BCD");
+    if (!word) throw new Error("Empty trigger in @if expression");
     return hay.includes(word.toLowerCase());
   };
   const result = parseOr();
   skipWs();
-  if (pos < src.length) throw new Error(`@if \u8868\u8FBE\u5F0F\u5B58\u5728\u672A\u89E3\u6790\u7247\u6BB5: "${src.substring(pos)}"`);
+  if (pos < src.length) throw new Error(`Unparsed fragment in @if expression: "${src.substring(pos)}"`);
   return result;
 }
 function safeEvaluateIf(condition, haystack, ctxLabel = "") {
@@ -9858,7 +9859,7 @@ async function prepareImageForUpload(input, options = {}) {
   const origW = img.naturalWidth || img.width;
   const origH = img.naturalHeight || img.height;
   if (!origW || !origH) {
-    throw new Error("\u65E0\u6CD5\u8BFB\u53D6\u56FE\u7247\u5C3A\u5BF8");
+    throw new Error("Failed to read image dimensions");
   }
   let targetW = origW;
   let targetH = origH;
@@ -9889,7 +9890,7 @@ async function prepareImageForUpload(input, options = {}) {
     canvas.toBlob(resolve, "image/jpeg", quality);
   });
   if (!blob) {
-    throw new Error("Canvas \u5BFC\u51FA JPEG \u56FE\u7247\u5931\u8D25");
+    throw new Error("Failed to export canvas as JPEG");
   }
   while (blob.size > maxSizeBytes && quality > 0.65) {
     quality -= 0.1;
@@ -9927,13 +9928,13 @@ async function processUploadedImage(file, is = false) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (evt) => resolve(evt.target.result);
-      reader.onerror = (err) => reject(new Error("\u6587\u4EF6\u8BFB\u53D6\u5931\u8D25."));
+      reader.onerror = (err) => reject(new Error("Failed to read file."));
       if (file instanceof Blob || file instanceof File) {
         reader.readAsDataURL(file);
       } else if (typeof file === "string") {
         resolve(file);
       } else {
-        reject(new Error("\u4E0D\u652F\u6301\u7684\u6587\u4EF6\u7C7B\u578B"));
+        reject(new Error("Unsupported file type"));
       }
     });
   }
@@ -9982,13 +9983,13 @@ function loadImage(input) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("\u56FE\u7247\u52A0\u8F7D\u5931\u8D25"));
+    img.onerror = () => reject(new Error("Image loading failed"));
     if (input instanceof File || input instanceof Blob) {
       img.src = URL.createObjectURL(input);
     } else if (typeof input === "string") {
       img.src = input;
     } else {
-      reject(new Error("\u4E0D\u652F\u6301\u7684\u56FE\u7247\u8F93\u5165\u7C7B\u578B"));
+      reject(new Error("Unsupported image input type"));
     }
   });
 }
@@ -10168,7 +10169,7 @@ async function fixMp4Faststart(blob) {
 }
 async function safeDataUrlToBlob(dataUrl) {
   if (!dataUrl || typeof dataUrl !== "string") {
-    throw new Error("safeDataUrlToBlob: \u65E0\u6548\u7684 dataUrl \u8F93\u5165");
+    throw new Error("safeDataUrlToBlob: invalid dataUrl input");
   }
   if (!dataUrl.startsWith("data:")) {
     const res = await fetch(dataUrl);
@@ -10183,7 +10184,7 @@ async function safeDataUrlToBlob(dataUrl) {
   }
   const commaIdx = dataUrl.indexOf(",");
   if (commaIdx === -1) {
-    throw new Error("safeDataUrlToBlob: \u975E\u6CD5\u7684 DataURL \u7ED3\u6784");
+    throw new Error("safeDataUrlToBlob: invalid DataURL structure");
   }
   const meta = dataUrl.slice(0, commaIdx);
   const mimeMatch = meta.match(/data:([^;]+)/);
@@ -10274,7 +10275,7 @@ var init_utils = __esm({
       acquire(taskId, signal = null) {
         return new Promise((resolve, reject) => {
           if (signal?.aborted) {
-            const reasonErr = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+            const reasonErr = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("Task cancelled");
             return reject(reasonErr);
           }
           const queueItem = {
@@ -10288,7 +10289,7 @@ var init_utils = __esm({
             const abortHandler = () => {
               queueItem.isAborted = true;
               this.remove(taskId);
-              const reasonErr = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+              const reasonErr = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("Task cancelled");
               reject(reasonErr);
             };
             signal.addEventListener("abort", abortHandler, { once: true });
@@ -10364,7 +10365,7 @@ var init_utils = __esm({
         while (this.queue.length > 0) {
           const item = this.queue.shift();
           try {
-            item.reject(new Error("\u4EFB\u52A1\u961F\u5217\u5DF2\u91CD\u7F6E"));
+            item.reject(new Error("Task queue reset"));
           } catch (_) {
           }
         }
@@ -10393,7 +10394,7 @@ var init_utils = __esm({
       acquire(taskId, signal = null) {
         return new Promise((resolve, reject) => {
           if (signal?.aborted) {
-            const err = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+            const err = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("Task cancelled");
             reject(err);
             return;
           }
@@ -10408,7 +10409,7 @@ var init_utils = __esm({
             const abortHandler = () => {
               queueItem.isAborted = true;
               this.remove(taskId);
-              const reasonErr = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+              const reasonErr = signal.reason instanceof Error ? signal.reason : signal.reason ? new Error(String(signal.reason)) : new Error("Task cancelled");
               reject(reasonErr);
             };
             signal.addEventListener("abort", abortHandler, { once: true });
@@ -10443,7 +10444,7 @@ var init_utils = __esm({
         while (this.queue.length > 0) {
           const item = this.queue.shift();
           try {
-            item.reject(new Error("ComfyUI \u4EFB\u52A1\u961F\u5217\u5DF2\u91CD\u7F6E"));
+            item.reject(new Error("ComfyUI task queue reset"));
           } catch (_) {
           }
         }
@@ -11399,7 +11400,7 @@ function ensureVideoLoaded(state3, videoKey, srcKey, id) {
       const onError = () => {
         state3[videoKey].removeEventListener("loadeddata", onLoaded);
         state3[videoKey].removeEventListener("error", onError);
-        reject(new Error(`\u53EF\u9009\u89C6\u9891 ${id} \u52A0\u8F7D\u5931\u8D25`));
+        reject(new Error(`Optional video ${id} failed to load`));
       };
       state3[videoKey].addEventListener("loadeddata", onLoaded);
       state3[videoKey].addEventListener("error", onError);
@@ -11415,7 +11416,7 @@ function ensureVideoLoaded(state3, videoKey, srcKey, id) {
     video.addEventListener("error", () => {
       state3[loadingKey] = false;
       console.warn(`[st-chatu8] \u53EF\u9009\u89C6\u9891 ${id} \u52A0\u8F7D\u5931\u8D25\uFF0C\u529F\u80FD\u4E0D\u53EF\u7528`);
-      reject(new Error(`\u53EF\u9009\u89C6\u9891 ${id} \u52A0\u8F7D\u5931\u8D25`));
+      reject(new Error(`Optional video ${id} failed to load`));
     });
     startVideoLoad(video);
   });
@@ -14519,8 +14520,8 @@ function loadThemeSettings() {
   const currentThemeId = settings.theme_id;
   select.innerHTML = "";
   for (const key in settings.themes) {
-    const option = new Option(key, key);
-    option.title = key;
+    const option = new Option(optionLabel(key), key);
+    option.title = optionLabel(key);
     select.add(option);
   }
   select.value = currentThemeId;
@@ -15787,7 +15788,7 @@ function clearDebugLog() {
 }
 function exportDebugLog() {
   if (debugLogEntries.length === 0) {
-    return "\u8C03\u8BD5\u65E5\u5FD7\u4E3A\u7A7A\u3002";
+    return "Debug log is empty.";
   }
   const lines = [];
   const now = /* @__PURE__ */ new Date();
@@ -15875,7 +15876,7 @@ function exportDebugLog() {
       case "error":
         lines.push(`[${timeStr}]${elapsedStr} ${entry.message}`);
         if (entry.context) {
-          lines.push(`  \u9519\u8BEF\u8BE6\u60C5: ${formatContext(entry.context)}`);
+          lines.push(`  Error details: ${formatContext(entry.context)}`);
         }
         lines.push("");
         break;
@@ -16118,7 +16119,7 @@ function loadWRProfiles() {
   const currentName = settings3.current_word_replacement_profile;
   wrProfileSelect.empty();
   Object.keys(profiles).forEach((name) => {
-    const option = new Option(name, name, name === currentName, name === currentName);
+    const option = new Option(optionLabel(name), name, name === currentName, name === currentName);
     wrProfileSelect.append(option);
   });
   if (wrProfileSelect.val()) {
@@ -18017,7 +18018,7 @@ async function deleteImagesForElement(el) {
 }
 async function lockTagForElement(el, tagToLock) {
   if (!el || !tagToLock) {
-    return { success: false, message: "\u53C2\u6570\u65E0\u6548" };
+    return { success: false, message: "Invalid parameters" };
   }
   const mesText = findMesTextFromElement(el);
   if (mesText) {
@@ -18109,7 +18110,7 @@ async function lockTagForElement(el, tagToLock) {
 }
 async function unlockTagForElement(el, tagToUnlock) {
   if (!el || !tagToUnlock) {
-    return { success: false, message: "\u53C2\u6570\u65E0\u6548" };
+    return { success: false, message: "Invalid parameters" };
   }
   const mesText = findMesTextFromElement(el);
   if (mesText) {
@@ -18274,7 +18275,7 @@ async function isTagLocked(el, tagToCheck) {
 }
 async function lockAllTagsForElement(el) {
   if (!el) {
-    return { success: false, message: "\u53C2\u6570\u65E0\u6548", count: 0 };
+    return { success: false, message: "Invalid parameters", count: 0 };
   }
   const mesText = findMesTextFromElement(el);
   let lockedCount = 0;
@@ -18375,7 +18376,7 @@ async function lockAllTagsForElement(el) {
 }
 async function unlockAllTagsForElement(el) {
   if (!el) {
-    return { success: false, message: "\u53C2\u6570\u65E0\u6548", count: 0 };
+    return { success: false, message: "Invalid parameters", count: 0 };
   }
   const mesText = findMesTextFromElement(el);
   let unlockedCount = 0;
@@ -18446,7 +18447,7 @@ async function unlockAllTagsForElement(el) {
 }
 async function deleteTagForElement(el, tag) {
   if (!el || !tag) {
-    return { success: false, message: "\u53C2\u6570\u65E0\u6548" };
+    return { success: false, message: "Invalid parameters" };
   }
   const tagToDelete = tag.trim();
   let deletedFromAny = false;
@@ -19447,7 +19448,7 @@ async function importVideoAssetsPackage(options) {
     onProgress = null
   } = options;
   if (!Array.isArray(incomingAssets)) {
-    throw new Error("\u5BFC\u5165\u6570\u636E\u683C\u5F0F\u9519\u8BEF\uFF0C\u5FC5\u987B\u5305\u542B\u8D44\u4EA7\u6570\u7EC4");
+    throw new Error("Invalid import format: an assets array is required");
   }
   const getMediaData = (key) => {
     if (!key) return null;
@@ -20903,7 +20904,7 @@ function base64UrlEncode(input) {
 async function createSignedJWT(credentials) {
   const { client_email, private_key } = credentials;
   if (!client_email || !private_key) {
-    throw new Error("Vertex \u51ED\u636E\u7F3A\u5C11 client_email \u6216 private_key");
+    throw new Error("Vertex credentials are missing client_email or private_key");
   }
   const now = Math.floor(Date.now() / 1e3);
   const header = { alg: "RS256", typ: "JWT" };
@@ -20940,7 +20941,7 @@ async function createSignedJWT(credentials) {
 }
 async function getVertexAccessToken(credentials, bypassProxy = false) {
   if (!credentials || !credentials.client_email) {
-    throw new Error("\u672A\u914D\u7F6E\u6709\u6548\u7684 Vertex Service Account \u51ED\u636E");
+    throw new Error("Configure valid Vertex service account credentials");
   }
   const email = credentials.client_email;
   const now = Math.floor(Date.now() / 1e3);
@@ -20964,7 +20965,7 @@ async function getVertexAccessToken(credentials, bypassProxy = false) {
       errText = await response.text();
     } catch (_e) {
     }
-    throw new Error(`Google OAuth2 Token \u4EA4\u6362\u5931\u8D25 (${response.status}): ${errText}`);
+    throw new Error(`Google OAuth2 token exchange failed (${response.status}): ${errText}`);
   }
   const data = await response.json();
   const accessToken = data.access_token;
@@ -21304,7 +21305,7 @@ function isNonRetryableError(error) {
   }
   const errorMsg = error.message || String(error);
   const lower = errorMsg.toLowerCase();
-  if (errorMsg.includes("\u672A\u914D\u7F6E")) {
+  if (/未配置|not configured|configure (?:valid |the )|no .+ configured/i.test(errorMsg)) {
     return true;
   }
   if (lower.includes("401") || lower.includes("403") || lower.includes("unauthorized") || lower.includes("forbidden") || lower.includes("invalid_api_key") || lower.includes("invalid api key")) {
@@ -21348,7 +21349,7 @@ function extractApiErrorMessage(response, raw) {
         if (meta.length > 0) errorDetail += ` (${meta.join(", ")})`;
       } else if (parsedJson.error === true) {
         isSillyTavernProxyError = true;
-        errorDetail = "\u9152\u9986\u540E\u7AEF\u4EE3\u7406\u8FDE\u63A5\u5931\u8D25\uFF1AAPI Key \u9519\u8BEF/\u65E0\u6548\uFF0C\u6216 API \u5730\u5740\u65E0\u6CD5\u8FDE\u63A5 (401/404)";
+        errorDetail = "SillyTavern proxy connection failed. Check the API key and API URL (401/404).";
       } else {
         errorDetail = String(parsedJson.error);
       }
@@ -21389,7 +21390,7 @@ function extractApiErrorMessage(response, raw) {
   }
   const isOkWithProxyErr = response && response.status === 200 && isSillyTavernProxyError;
   const statusText = response && !isOkWithProxyErr ? `${response.status} ${response.statusText || ""}`.trim() : "";
-  let finalMsg = errorDetail ? statusText ? `[${statusText}] ${errorDetail}` : errorDetail : `\u8BF7\u6C42\u5931\u8D25: ${statusText || "\u672A\u77E5\u9519\u8BEF"}`;
+  let finalMsg = errorDetail ? statusText ? `[${statusText}] ${errorDetail}` : errorDetail : `\u8BF7\u6C42\u5931\u8D25: ${statusText || "Unknown error"}`;
   const lower = finalMsg.toLowerCase();
   const suggestions = [];
   if (isSillyTavernProxyError) {
@@ -21805,7 +21806,7 @@ async function executeTypedLLMRequest(data, requestType, responseEventName, upda
     const targetModel = isVertexChannel ? config.vertex_model || "gemini-2.5-flash" : model;
     if (isVertexChannel) {
       if (!config.vertex_credentials || !config.vertex_credentials.client_email) {
-        const errorMsg = `${typeName}: Vertex \u6E20\u9053\u672A\u914D\u7F6E\u6709\u6548\u7684 GCP Service Account JSON \u51ED\u636E\u3002`;
+        const errorMsg = `${typeName}: configure valid GCP service account JSON credentials for Vertex.`;
         toastr.error(errorMsg);
         activeRequests.delete(requestKey);
         if (taskId) {
@@ -21818,7 +21819,7 @@ async function executeTypedLLMRequest(data, requestType, responseEventName, upda
       }
     } else {
       if (!api_url || !api_key || !model) {
-        const errorMsg = `${typeName}: API URL, API Key, \u6216 Model \u672A\u914D\u7F6E\u3002`;
+        const errorMsg = `${typeName}: configure the API URL, API key and model.`;
         toastr.error(errorMsg);
         activeRequests.delete(requestKey);
         if (taskId) {
@@ -22002,12 +22003,12 @@ async function executeTypedLLMRequest(data, requestType, responseEventName, upda
         throttledUI.flush();
         if (isEmptyResponse(reply)) {
           if (attempt < maxRetries) {
-            lastError = new Error("\u672A\u6536\u5230\u6709\u6548\u56DE\u590D");
+            lastError = new Error("No valid response received");
             activeRequests.delete(requestKey);
             attempt++;
             continue;
           } else {
-            reply = "\u672A\u6536\u5230\u6709\u6548\u56DE\u590D\u3002";
+            reply = "No valid response received.";
             toastr.warning(`${typeName}: Empty LLM response after ${maxRetries} retries. Check truncation, max_tokens, or API connectivity.`);
           }
         }
@@ -22038,12 +22039,12 @@ async function executeTypedLLMRequest(data, requestType, responseEventName, upda
         }
         if (isEmptyResponse(reply)) {
           if (attempt < maxRetries) {
-            lastError = new Error("\u672A\u6536\u5230\u6709\u6548\u56DE\u590D");
+            lastError = new Error("No valid response received");
             activeRequests.delete(requestKey);
             attempt++;
             continue;
           } else {
-            reply = "\u672A\u6536\u5230\u6709\u6548\u56DE\u590D\u3002";
+            reply = "No valid response received.";
             toastr.warning(`${typeName}: Empty LLM response after ${maxRetries} retries. Check truncation, max_tokens, or API connectivity.`);
           }
         }
@@ -22098,7 +22099,7 @@ async function executeTypedLLMRequest(data, requestType, responseEventName, upda
         continue;
       }
       console.error(`${typeName} Error:`, error);
-      const errorMessage = attempt > 0 ? `\u8BF7\u6C42\u9519\u8BEF\uFF08\u5DF2\u91CD\u8BD5 ${attempt} \u6B21\uFF09: ${error.message}` : `\u8BF7\u6C42\u9519\u8BEF: ${error.message}`;
+      const errorMessage = attempt > 0 ? `\u8BF7\u6C42\u9519\u8BEF\uFF08\u5DF2\u91CD\u8BD5 ${attempt} \u6B21\uFF09: ${error.message}` : `Request error: ${error.message}`;
       if (updateResultUI) {
         updateResultUI(errorMessage);
       }
@@ -22216,7 +22217,7 @@ async function executeDefaultLLMRequest(data, profileData, updateResultUI = null
     const targetModel = isVertexChannel ? profileData.vertex_model || "gemini-2.5-flash" : model;
     if (isVertexChannel) {
       if (!profileData.vertex_credentials || !profileData.vertex_credentials.client_email) {
-        const errorMsg = "Vertex \u6E20\u9053\u672A\u914D\u7F6E\u6709\u6548\u7684 GCP Service Account JSON \u51ED\u636E\u3002";
+        const errorMsg = "Configure valid GCP service account JSON credentials for Vertex.";
         toastr.error(errorMsg);
         activeRequests.delete(requestKey);
         if (taskId) {
@@ -22229,7 +22230,7 @@ async function executeDefaultLLMRequest(data, profileData, updateResultUI = null
       }
     } else {
       if (!api_url || !api_key || !model) {
-        const errorMsg = "API URL, API Key, \u6216 Model \u672A\u914D\u7F6E\u3002";
+        const errorMsg = "Configure the API URL, API key and model.";
         toastr.error(errorMsg);
         activeRequests.delete(requestKey);
         if (taskId) {
@@ -22351,7 +22352,7 @@ async function executeDefaultLLMRequest(data, profileData, updateResultUI = null
       if (isEmptyResponse(reply)) {
         if (attempt < maxRetries) {
           console.warn("[DEBUG-SVC] \u26A0 reply \u4E3A\u7A7A\uFF0C\u5C06\u91CD\u8BD5");
-          lastError = new Error("\u672A\u6536\u5230\u6709\u6548\u56DE\u590D");
+          lastError = new Error("No valid response received");
           activeRequests.delete(requestKey);
           attempt++;
           continue;
@@ -22411,7 +22412,7 @@ async function executeDefaultLLMRequest(data, profileData, updateResultUI = null
         continue;
       }
       console.error("LLM Execute Error:", error);
-      const errorMessage = attempt > 0 ? `\u8BF7\u6C42\u9519\u8BEF\uFF08\u5DF2\u91CD\u8BD5 ${attempt} \u6B21\uFF09: ${error.message}` : `\u8BF7\u6C42\u9519\u8BEF: ${error.message}`;
+      const errorMessage = attempt > 0 ? `\u8BF7\u6C42\u9519\u8BEF\uFF08\u5DF2\u91CD\u8BD5 ${attempt} \u6B21\uFF09: ${error.message}` : `Request error: ${error.message}`;
       if (updateResultUI) {
         updateResultUI(errorMessage);
       }
@@ -23119,7 +23120,7 @@ function loadLLMProfiles() {
   const currentProfileName = extension_settings18[extensionName].current_llm_profile;
   profileSelect.empty();
   Object.keys(profiles).forEach((name) => {
-    const option = new Option(name, name, name === currentProfileName, name === currentProfileName);
+    const option = new Option(optionLabel(name), name, name === currentProfileName, name === currentProfileName);
     profileSelect.append(option);
   });
   if (profileSelect.val()) {
@@ -23131,7 +23132,7 @@ function loadTestContextProfiles() {
   const currentProfileName = extension_settings18[extensionName].current_test_context_profile;
   testContextSelect.empty();
   Object.keys(profiles).forEach((name) => {
-    const option = new Option(name, name, name === currentProfileName, name === currentProfileName);
+    const option = new Option(optionLabel(name), name, name === currentProfileName, name === currentProfileName);
     testContextSelect.append(option);
   });
   if (testContextSelect.val()) {
@@ -23194,7 +23195,7 @@ function onProfileSelectChange() {
     modelSelect.empty();
     const savedModel = profile.model || "";
     if (savedModel) {
-      modelSelect.append(new Option(savedModel, savedModel, true, true));
+      modelSelect.append(new Option(optionLabel(savedModel), savedModel, true, true));
     }
     modelInput.val(savedModel);
     const temp = profile.temperature ?? 0.7;
@@ -23934,9 +23935,9 @@ async function onFetchModelsClick() {
     if (vertexModelSelect) {
       vertexModelSelect.empty();
       defaultVertexModels.forEach((m) => {
-        vertexModelSelect.append(new Option(m, m));
+        vertexModelSelect.append(new Option(optionLabel(m), m));
       });
-      vertexModelSelect.append(new Option("Custom model name...", "custom"));
+      vertexModelSelect.append(new Option(optionLabel("Custom model name..."), "custom"));
       const currentModel = vertexModelInput?.val() || defaultVertexModels[0];
       if (defaultVertexModels.includes(currentModel)) {
         vertexModelSelect.val(currentModel);
@@ -23992,12 +23993,12 @@ async function onFetchModelsClick() {
       } catch (_readErr) {
       }
       const formattedError = extractApiErrorMessage(response, errorBodyText);
-      throw new Error(`\u83B7\u53D6\u6A21\u578B\u5217\u8868\u5931\u8D25: ${formattedError}`);
+      throw new Error(`Failed to fetch model list: ${formattedError}`);
     }
     const data = await response.json();
     if (data.error || !data.data && !data.models && (data.detail || data.message || data.msg)) {
       const formattedError = extractApiErrorMessage(response, data);
-      throw new Error(`\u83B7\u53D6\u6A21\u578B\u5217\u8868\u5931\u8D25: ${formattedError}`);
+      throw new Error(`Failed to fetch model list: ${formattedError}`);
     }
     let rawList = [];
     if (Array.isArray(data)) {
@@ -24017,7 +24018,7 @@ async function onFetchModelsClick() {
     const currentlySelected = modelSelect.val();
     modelSelect.empty();
     models.forEach((model) => {
-      modelSelect.append(new Option(model.id, model.id));
+      modelSelect.append(new Option(optionLabel(model.id), model.id));
     });
     if (currentlySelected && models.some((m) => m.id === currentlySelected)) {
       modelSelect.val(currentlySelected);
@@ -24081,7 +24082,7 @@ async function onTestLLMClick() {
           errText = await response.text();
         } catch (_e) {
         }
-        throw new Error(`Vertex \u54CD\u5E94\u9519\u8BEF (${response.status}): ${errText}`);
+        throw new Error(`Vertex response error (${response.status}): ${errText}`);
       }
       const vertexJson = await response.json();
       const openAiResp = convertVertexToOpenAIResponse(vertexJson, currentData.vertex_model);
@@ -24168,7 +24169,7 @@ ${err.message}`);
       const formattedError = extractApiErrorMessage(response, data);
       throw new Error(formattedError);
     }
-    const reply = data.choices?.[0]?.message?.content || "\u672A\u6536\u5230\u6709\u6548\u56DE\u590D\u3002";
+    const reply = data.choices?.[0]?.message?.content || "No valid response received.";
     resultTextarea.val(reply);
     eventSource7.emit(eventNames.LLM_TEST_RESULT, { success: true, data });
   } catch (error) {
@@ -24176,7 +24177,7 @@ ${err.message}`);
       resultTextarea.val("\u8BF7\u6C42\u5DF2\u4E2D\u6B62\u3002");
       return;
     }
-    const errorMessage = `\u8BF7\u6C42\u9519\u8BEF: ${error.message}`;
+    const errorMessage = `Request error: ${error.message}`;
     resultTextarea.val(errorMessage);
     toastr.error(errorMessage);
     eventSource7.emit(eventNames.LLM_TEST_RESULT, { success: false, error: errorMessage });
@@ -24210,7 +24211,7 @@ function loadRequestTypeProfiles(isInit = false) {
   const currentProfileName = extension_settings18[extensionName].current_llm_request_type_profile;
   requestTypeProfileSelect.empty();
   Object.keys(profiles).forEach((name) => {
-    const option = new Option(name, name, name === currentProfileName, name === currentProfileName);
+    const option = new Option(optionLabel(name), name, name === currentProfileName, name === currentProfileName);
     requestTypeProfileSelect.append(option);
   });
   if (requestTypeProfileSelect.val() && !isInit) {
@@ -24602,7 +24603,7 @@ function populateRequestTypeSelects() {
     const currentConfig = configs[requestTypes[index]] || {};
     const selectedApi = currentConfig.api_profile || "\u9ED8\u8BA4";
     llmProfileNames.forEach((name) => {
-      const option = new Option(name, name, name === selectedApi, name === selectedApi);
+      const option = new Option(optionLabel(name), name, name === selectedApi, name === selectedApi);
       select.append(option);
     });
   });
@@ -24612,7 +24613,7 @@ function populateRequestTypeSelects() {
     const currentConfig = configs[requestTypes[index]] || {};
     const selectedContext = currentConfig.context_profile || "\u9ED8\u8BA4";
     contextProfileNames.forEach((name) => {
-      const option = new Option(name, name, name === selectedContext, name === selectedContext);
+      const option = new Option(optionLabel(name), name, name === selectedContext, name === selectedContext);
       select.append(option);
     });
   });
@@ -26254,7 +26255,7 @@ function LLM_TRANSLATION(prompt2, { timeoutMs = 6e4 } = {}) {
     eventSource8.emit(eventNames.LLM_TRANSLATION_REQUEST, { prompt: prompt2, id: executeRequestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error(`\u7FFB\u8BD1 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Translation LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -26262,7 +26263,7 @@ async function callTranslation(inputText) {
   try {
     let basePrompt = buildPromptForRequestType("translation", inputText || "");
     if (!basePrompt || basePrompt.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u7FFB\u8BD1"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Translation context preset in LLM settings.");
     }
     basePrompt = mergeAdjacentMessages(basePrompt, getMergeOptionsForRequestType("translation"));
     const fullPrompt = [...basePrompt, { role: "user", content: inputText || "" }];
@@ -26322,14 +26323,14 @@ function LLM_OUTFIT_DISPLAY(prompt2, options = {}) {
       if (responseData.success) {
         resolve(responseData.result);
       } else {
-        reject(new Error(responseData.result || "LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "LLM request failed"));
       }
     };
     eventSource9.on(eventNames.LLM_CHAR_DISPLAY_RESPONSE, handler);
     eventSource9.emit(eventNames.LLM_CHAR_DISPLAY_REQUEST, { prompt: prompt2, id: requestId });
     setTimeout(() => {
       eventSource9.removeListener(eventNames.LLM_CHAR_DISPLAY_RESPONSE, handler);
-      reject(new Error("\u670D\u88C5\u5C55\u793A LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("Outfit display LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -26446,7 +26447,7 @@ function readFileAsBase64(file) {
     reader.readAsDataURL(file);
   });
 }
-function attachImagesToMessage(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
     return messages;
   }
@@ -26727,7 +26728,7 @@ async function handleOutfitImagePromptGenerate(userRequirement, userImages = [])
     const triggerText = [userRequirement || "", currentOutfitText].filter(Boolean).join("\n");
     let prompt2 = buildPromptForRequestType("char_display", triggerText);
     if (!prompt2 || prompt2.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u89D2\u8272/\u670D\u88C5\u5C55\u793A"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Character/outfit display context preset in LLM settings.");
     }
     const replacedVariables = /* @__PURE__ */ new Set();
     const userRequirementMessageIndex = findMessageIndexWithPlaceholder(prompt2, "{{\u7528\u6237\u9700\u6C42}}");
@@ -26749,7 +26750,7 @@ async function handleOutfitImagePromptGenerate(userRequirement, userImages = [])
 `;
     }
     if (userImages && userImages.length > 0 && userRequirementMessageIndex >= 0) {
-      prompt2 = attachImagesToMessage(prompt2, userRequirementMessageIndex, userImages, "\u53C2\u8003\u56FE\u7247");
+      prompt2 = attachImagesToMessage(prompt2, userRequirementMessageIndex, userImages, "Reference image");
       console.log("[outfitImagePromptGen] Attached", userImages.length, "images to message at index", userRequirementMessageIndex);
     }
     updateCombinedPrompt(prompt2, diagnosticText);
@@ -26829,7 +26830,7 @@ function replacePlaceholder3(obj, placeholder, value, replacedSet) {
   }
   return obj;
 }
-function attachImagesToMessage2(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage2(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
     return messages;
   }
@@ -26908,14 +26909,14 @@ function LLM_OUTFIT_MODIFY(prompt2, options = {}) {
       if (responseData.success) {
         resolve(responseData.result);
       } else {
-        reject(new Error(responseData.result || "LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "LLM request failed"));
       }
     };
     eventSource10.on(eventNames.LLM_CHAR_MODIFY_RESPONSE, handler);
     eventSource10.emit(eventNames.LLM_CHAR_MODIFY_REQUEST, { prompt: prompt2, id: requestId });
     setTimeout(() => {
       eventSource10.removeListener(eventNames.LLM_CHAR_MODIFY_RESPONSE, handler);
-      reject(new Error("\u670D\u88C5\u4FEE\u6539 LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("Outfit modification LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -27019,7 +27020,7 @@ async function handleOutfitPromptModify(userRequirement, userImages = []) {
     const triggerText = [userRequirement || "", currentOutfitText].filter(Boolean).join("\n");
     let prompt2 = buildPromptForRequestType("char_modify", triggerText);
     if (!prompt2 || prompt2.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u89D2\u8272/\u670D\u88C5\u4FEE\u6539"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Character/outfit modification context preset in LLM settings.");
     }
     const replacedVariables = /* @__PURE__ */ new Set();
     const userRequirementMessageIndex = findMessageIndexWithPlaceholder2(prompt2, "{{\u7528\u6237\u9700\u6C42}}");
@@ -27041,7 +27042,7 @@ async function handleOutfitPromptModify(userRequirement, userImages = []) {
 `;
     }
     if (userImages && userImages.length > 0 && userRequirementMessageIndex >= 0) {
-      prompt2 = attachImagesToMessage2(prompt2, userRequirementMessageIndex, userImages, "\u53C2\u8003\u56FE\u7247");
+      prompt2 = attachImagesToMessage2(prompt2, userRequirementMessageIndex, userImages, "Reference image");
       console.log("[outfitPromptModify] Attached", userImages.length, "images to message at index", userRequirementMessageIndex);
     }
     updateCombinedPrompt(prompt2, diagnosticText);
@@ -28864,7 +28865,7 @@ function loadOutfitPresetList() {
   for (const presetName in settings3.outfitPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
   select.value = settings3.outfitPresetId;
@@ -30200,7 +30201,7 @@ function updateInjectionTemplateUI(container) {
   const $select = container.find("#injection_template_preset_id");
   $select.empty();
   for (const id of Object.keys(presets)) {
-    $select.append($("<option></option>").attr("value", id).text(id));
+    $select.append($("<option></option>").attr("value", id).text(optionLabel(id)));
   }
   $select.val(currentId);
   const active = presets[currentId] || getSystemDefaultInjectionTemplates();
@@ -31109,7 +31110,7 @@ var init_worldbook = __esm({
 
 
 
-function attachImagesToMessage3(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage3(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
     return messages;
   }
@@ -31196,14 +31197,14 @@ function LLM_CHAR_MODIFY(prompt2, options = {}) {
       if (responseData.success) {
         resolve(responseData.result);
       } else {
-        reject(new Error(responseData.result || "LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "LLM request failed"));
       }
     };
     eventSource13.on(eventNames.LLM_CHAR_MODIFY_RESPONSE, handler);
     eventSource13.emit(eventNames.LLM_CHAR_MODIFY_REQUEST, { prompt: prompt2, id: requestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error("\u89D2\u8272\u4FEE\u6539 LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("Character modification LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -31419,7 +31420,7 @@ async function handleCharacterPromptModify(userRequirement, userImages = []) {
     console.log("[characterPromptModify] Character trigger text:", characterTriggerText);
     let prompt2 = buildPromptForRequestType("char_modify", entryTriggerText);
     if (!prompt2 || prompt2.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u89D2\u8272/\u670D\u88C5\u4FEE\u6539"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Character/outfit modification context preset in LLM settings.");
     }
     const characterListText = generateCharacterListText(characterTriggerText);
     const outfitEnableListText = generateOutfitEnableListText();
@@ -31450,7 +31451,7 @@ async function handleCharacterPromptModify(userRequirement, userImages = []) {
 `;
     }
     if (userImages && userImages.length > 0 && userRequirementMessageIndex >= 0) {
-      prompt2 = attachImagesToMessage3(prompt2, userRequirementMessageIndex, userImages, "\u53C2\u8003\u56FE\u7247");
+      prompt2 = attachImagesToMessage3(prompt2, userRequirementMessageIndex, userImages, "Reference image");
       console.log("[characterPromptModify] Attached", userImages.length, "images to message at index", userRequirementMessageIndex);
     }
     updateCombinedPrompt(prompt2, diagnosticText);
@@ -31685,14 +31686,14 @@ function LLM_CHAR_DISPLAY(prompt2, options = {}) {
       if (responseData.success) {
         resolve(responseData.result);
       } else {
-        reject(new Error(responseData.result || "LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "LLM request failed"));
       }
     };
     eventSource14.on(eventNames.LLM_CHAR_DISPLAY_RESPONSE, handler);
     eventSource14.emit(eventNames.LLM_CHAR_DISPLAY_REQUEST, { prompt: prompt2, id: requestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error("\u89D2\u8272/\u670D\u88C5\u5C55\u793A LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("Character/outfit display LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -31838,7 +31839,7 @@ function readFileAsBase642(file) {
     reader.readAsDataURL(file);
   });
 }
-function attachImagesToMessage4(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage4(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
     return messages;
   }
@@ -32120,7 +32121,7 @@ async function handleImagePromptGenerate(userRequirement, userImages = []) {
     const triggerText = [userRequirement || "", currentCharacterText, currentOutfitsText].filter(Boolean).join("\n");
     let prompt2 = buildPromptForRequestType("char_display", triggerText);
     if (!prompt2 || prompt2.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u89D2\u8272/\u670D\u88C5\u5C55\u793A"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Character/outfit display context preset in LLM settings.");
     }
     const replacedVariables = /* @__PURE__ */ new Set();
     prompt2 = mergeAdjacentMessages(prompt2, getMergeOptionsForRequestType("char_display"));
@@ -32144,7 +32145,7 @@ async function handleImagePromptGenerate(userRequirement, userImages = []) {
 `;
     }
     if (userImages && userImages.length > 0 && userRequirementMessageIndex >= 0) {
-      prompt2 = attachImagesToMessage4(prompt2, userRequirementMessageIndex, userImages, "\u53C2\u8003\u56FE\u7247");
+      prompt2 = attachImagesToMessage4(prompt2, userRequirementMessageIndex, userImages, "Reference image");
       console.log("[imagePromptGen] Attached", userImages.length, "images to message at index", userRequirementMessageIndex);
     }
     updateCombinedPrompt(prompt2, diagnosticText);
@@ -32303,7 +32304,7 @@ function loadCharacterPresetList() {
   for (const presetName of sortedPresetNames) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
   select.value = settings3.characterPresetId;
@@ -32960,7 +32961,7 @@ function loadCharacterOutfitSelector() {
   for (const presetName in settings3.outfitPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
 }
@@ -33012,7 +33013,7 @@ function checkCharacterOutfitList() {
   html += "</div>";
   if (results.found.length > 0) {
     html += '<div style="margin-bottom: 10px;">';
-    html += '<strong style="color: #28a745;">\u2713 \u5DF2\u5B58\u5728\u7684\u670D\u88C5\uFF1A</strong>';
+    html += "<strong style=\"color: #28a745;\">✓ Existing outfits:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.found.forEach((outfit) => {
       html += `<li>${outfit}</li>`;
@@ -33021,7 +33022,7 @@ function checkCharacterOutfitList() {
   }
   if (results.notFound.length > 0) {
     html += "<div>";
-    html += '<strong style="color: #dc3545;">\u2717 \u672A\u627E\u5230\u7684\u670D\u88C5\uFF1A</strong>';
+    html += "<strong style=\"color: #dc3545;\">✗ Outfits not found:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.notFound.forEach((outfit) => {
       html += `<li>${outfit}</li>`;
@@ -34881,7 +34882,7 @@ function loadCharacterEnablePresetList() {
   for (const presetName in settings3.characterEnablePresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
   select.value = settings3.characterEnablePresetId;
@@ -35102,7 +35103,7 @@ function testCharacterTrigger() {
     html += `<br><strong>Current enabled list:</strong>${testCharacters.length} characters`;
     html += "</div>";
     html += '<table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">';
-    html += '<thead><tr><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">#</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u539F\u6587</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u683C\u5F0F</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u63D0\u53D6\u540D\u79F0</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u547D\u4E2D</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u547D\u4E2D\u89D2\u8272</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u547D\u4E2D\u9884\u8BBE</th><th style="text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;">\u547D\u4E2D\u6765\u6E90</th></tr></thead><tbody>';
+    html += "<thead><tr><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">#</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Original text</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Format</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Extracted name</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Matched</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Matched character</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Matched preset</th><th style=\"text-align: left; border-bottom: 1px solid var(--SmartThemeBorderColor); padding: 4px;\">Match source</th></tr></thead><tbody>";
     segmentResults.forEach((item, index) => {
       const r = item.result;
       const formatLabel = formatLabelMap[r.format] || "\u672A\u77E5";
@@ -35202,8 +35203,8 @@ function testCharacterListTrigger() {
       block += "</ul></div>";
       return block;
     };
-    html += renderList("\u2713 \u88AB\u89E6\u53D1\u7684\u89D2\u8272", triggered, "#28a745");
-    html += renderList("\u2717 \u672A\u88AB\u89E6\u53D1\u7684\u89D2\u8272", notTriggered, "#dc3545");
+    html += renderList("✓ Triggered characters", triggered, "#28a745");
+    html += renderList("✗ Characters not triggered", notTriggered, "#dc3545");
     if (missing.length > 0) {
       html += "<div style=\"margin-top: 10px;\"><strong style=\"color: #f0ad4e;\">⚠ Character preset IDs missing from list (" + missing.length + "\uFF09</strong>";
       html += '<ul style="margin: 4px 0 0 0; padding-left: 20px; font-size: 0.9em; line-height: 1.5;">';
@@ -35212,7 +35213,7 @@ function testCharacterListTrigger() {
       }
       html += "</ul></div>";
     }
-    html += "<div style=\"margin-top: 10px; color: var(--SmartThemeEmColor); font-size: 0.85em;\">该测试仅反映 <code>{{角色启用列表}} (enabled characters)</code> 的触发行为：大小写 / 空格已忽略，仅扫描启用列表中的角色。</div>";
+    html += "<div style=\"margin-top: 10px; color: var(--SmartThemeEmColor); font-size: 0.85em;\">This test covers only <code>{{角色启用列表}} (enabled characters)</code> triggers. Case and spaces are ignored. Only characters in the enabled list are scanned.</div>";
   }
   contentDiv.innerHTML = html;
   $(resultDiv).show();
@@ -35633,7 +35634,7 @@ function loadCharacterSelector() {
   for (const presetName in settings3.characterPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
 }
@@ -35688,7 +35689,7 @@ function checkCharacterList() {
   html += "</div>";
   if (results.found.length > 0) {
     html += '<div style="margin-bottom: 10px;">';
-    html += '<strong style="color: #28a745;">\u2713 \u5DF2\u5B58\u5728\u7684\u89D2\u8272\uFF1A</strong>';
+    html += "<strong style=\"color: #28a745;\">✓ Existing characters:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.found.forEach((char) => {
       html += `<li>${char}</li>`;
@@ -35697,7 +35698,7 @@ function checkCharacterList() {
   }
   if (results.notFound.length > 0) {
     html += "<div>";
-    html += '<strong style="color: #dc3545;">\u2717 \u672A\u627E\u5230\u7684\u89D2\u8272\uFF1A</strong>';
+    html += "<strong style=\"color: #dc3545;\">✗ Characters not found:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.notFound.forEach((char) => {
       html += `<li>${char}</li>`;
@@ -35749,7 +35750,7 @@ function loadOutfitEnablePresetList() {
   for (const presetName in settings3.outfitEnablePresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
   select.value = settings3.outfitEnablePresetId;
@@ -36034,7 +36035,7 @@ function loadOutfitEnableSelector() {
   for (const presetName in settings3.outfitPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
 }
@@ -36086,7 +36087,7 @@ function checkOutfitEnableList() {
   html += "</div>";
   if (results.found.length > 0) {
     html += '<div style="margin-bottom: 10px;">';
-    html += '<strong style="color: #28a745;">\u2713 \u5DF2\u5B58\u5728\u7684\u670D\u88C5\uFF1A</strong>';
+    html += "<strong style=\"color: #28a745;\">✓ Existing outfits:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.found.forEach((outfit) => {
       html += `<li>${outfit}</li>`;
@@ -36095,7 +36096,7 @@ function checkOutfitEnableList() {
   }
   if (results.notFound.length > 0) {
     html += "<div>";
-    html += '<strong style="color: #dc3545;">\u2717 \u672A\u627E\u5230\u7684\u670D\u88C5\uFF1A</strong>';
+    html += "<strong style=\"color: #dc3545;\">✗ Outfits not found:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.notFound.forEach((outfit) => {
       html += `<li>${outfit}</li>`;
@@ -36142,7 +36143,7 @@ function loadCharacterCommonPresetList() {
   for (const presetName in settings3.characterCommonPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
   select.value = settings3.characterCommonPresetId;
@@ -36499,7 +36500,7 @@ function loadCharacterCommonSelector() {
   for (const presetName in settings3.characterPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
 }
@@ -36551,7 +36552,7 @@ function checkCharacterCommonList() {
   html += "</div>";
   if (results.found.length > 0) {
     html += '<div style="margin-bottom: 10px;">';
-    html += '<strong style="color: #28a745;">\u2713 \u5DF2\u5B58\u5728\u7684\u89D2\u8272\uFF1A</strong>';
+    html += "<strong style=\"color: #28a745;\">✓ Existing characters:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.found.forEach((char) => {
       html += `<li>${char}</li>`;
@@ -36560,7 +36561,7 @@ function checkCharacterCommonList() {
   }
   if (results.notFound.length > 0) {
     html += "<div>";
-    html += '<strong style="color: #dc3545;">\u2717 \u672A\u627E\u5230\u7684\u89D2\u8272\uFF1A</strong>';
+    html += "<strong style=\"color: #dc3545;\">✗ Characters not found:</strong>";
     html += '<ul style="margin: 5px 0; padding-left: 20px;">';
     results.notFound.forEach((char) => {
       html += `<li>${char}</li>`;
@@ -36603,7 +36604,7 @@ function loadBananaCharacterPresetList() {
   for (const presetName in settings3.bananaCharacterPresets) {
     const option = document.createElement("option");
     option.value = presetName;
-    option.textContent = presetName;
+    option.textContent = optionLabel(presetName);
     select.add(option);
   }
   select.value = settings3.bananaCharacterPresetId;
@@ -37042,7 +37043,7 @@ function filterSelectOptions(select, config, keyword) {
   if (config.defaultOption) {
     const defaultOpt = document.createElement("option");
     defaultOpt.value = "";
-    defaultOpt.textContent = config.defaultOption;
+    defaultOpt.textContent = optionLabel(config.defaultOption);
     select.add(defaultOpt);
   }
   const matchedOptions = [];
@@ -37057,9 +37058,9 @@ function filterSelectOptions(select, config, keyword) {
           const names = [presetData.nameCN, presetData.nameEN].filter(Boolean).join(" / ");
           nameParts.push(`(${names})`);
         }
-        option.textContent = nameParts.join(" ");
+        option.textContent = optionLabel(nameParts.join(" "));
       } else {
-        option.textContent = presetName;
+        option.textContent = optionLabel(presetName);
       }
       select.add(option);
       matchedOptions.push(presetName);
@@ -37970,7 +37971,7 @@ function showUserDemandPopup() {
     setTimeout(() => textarea.focus(), 100);
   });
 }
-function attachImagesToMessage5(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage5(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
     return messages;
   }
@@ -38054,14 +38055,14 @@ function LLM_CHAR_DESIGN(prompt2, options = {}) {
           resolve({ result: responseData.result, testMode: false });
         }
       } else {
-        reject(new Error(responseData.result || "LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "LLM request failed"));
       }
     };
     eventSource17.on(eventNames.LLM_CHAR_DESIGN_RESPONSE, handler);
     eventSource17.emit(eventNames.LLM_CHAR_DESIGN_REQUEST, { prompt: prompt2, id: requestId, appearanceExtraction: options.appearanceExtraction === true });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error("\u89D2\u8272\u8BBE\u8BA1 LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("Character design LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -38125,7 +38126,7 @@ async function handleCharacterDesignRequest(el) {
     console.log("[characterGen] Character trigger text:", characterTriggerText);
     let prompt2 = buildPromptForRequestType("char_design", entryTriggerText);
     if (!prompt2 || prompt2.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u89D2\u8272/\u670D\u88C5\u8BBE\u8BA1"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Character/outfit design context preset in LLM settings.");
     }
     const characterListText = generateCharacterListText(characterTriggerText);
     const outfitEnableListText = generateOutfitEnableListText();
@@ -38149,7 +38150,7 @@ async function handleCharacterDesignRequest(el) {
     const userDemandMessageIndex = findUserDemandMessageIndex2(prompt2);
     console.log("[characterGen] \u627E\u5230\u7528\u6237\u6D88\u606F\u7D22\u5F15\u7528\u4E8E\u9644\u52A0\u56FE\u7247:", userDemandMessageIndex);
     if (userUploadedImages.length > 0 && userDemandMessageIndex >= 0) {
-      prompt2 = attachImagesToMessage5(prompt2, userDemandMessageIndex, userUploadedImages, "\u53C2\u8003\u56FE\u7247");
+      prompt2 = attachImagesToMessage5(prompt2, userDemandMessageIndex, userUploadedImages, "Reference image");
       console.log("[characterGen] \u5DF2\u5C06", userUploadedImages.length, "\u5F20\u56FE\u7247\u9644\u52A0\u5230\u6D88\u606F\u7D22\u5F15", userDemandMessageIndex);
     }
     try {
@@ -38556,7 +38557,7 @@ function renderPickerGrid() {
           toastr.info(`Loading audio [${asset.name}]...`);
           const fileEntry = await getConfigFile(asset.fileid, { kind: "audio" });
           if (!fileEntry || !fileEntry.data) {
-            throw new Error("\u672A\u8BFB\u53D6\u5230\u97F3\u9891\u5E95\u5C42\u6570\u636E");
+            throw new Error("Audio data could not be read");
           }
           const blob = fileEntry.data instanceof Blob ? fileEntry.data : new Blob([fileEntry.data], { type: fileEntry.mimeType || "audio/mpeg" });
           selectCallback(asset, blob, null);
@@ -38564,7 +38565,7 @@ function renderPickerGrid() {
           toastr.info(`Loading image [${asset.name}]...`);
           const dataUrl = await getConfigImage(asset.fileid);
           if (!dataUrl) {
-            throw new Error("\u672A\u8BFB\u53D6\u5230\u56FE\u7247\u5E95\u5C42\u6570\u636E");
+            throw new Error("Image data could not be read");
           }
           const res = await fetch(dataUrl);
           const blob = await res.blob();
@@ -38634,7 +38635,7 @@ function LLM_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6 prompt \u8D85\u65F6"));
+      reject(new Error("Timed out waiting for prompt"));
     }, 1e4);
   });
 }
@@ -38653,7 +38654,7 @@ function LLM_IMAGE_GEN_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_IMAGE_GEN_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_IMAGE_GEN_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6\u6B63\u6587\u56FE\u7247\u751F\u6210\u63D0\u793A\u8BCD\u8D85\u65F6"));
+      reject(new Error("Timed out waiting for chat image prompt"));
     }, 1e4);
   });
 }
@@ -38672,7 +38673,7 @@ function LLM_CHAR_DESIGN_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_CHAR_DESIGN_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_CHAR_DESIGN_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6\u89D2\u8272/\u670D\u88C5\u8BBE\u8BA1\u63D0\u793A\u8BCD\u8D85\u65F6"));
+      reject(new Error("Timed out waiting for character/outfit design prompt"));
     }, 1e4);
   });
 }
@@ -38691,7 +38692,7 @@ function LLM_CHAR_DISPLAY_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_CHAR_DISPLAY_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_CHAR_DISPLAY_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6\u89D2\u8272/\u670D\u88C5\u5C55\u793A\u63D0\u793A\u8BCD\u8D85\u65F6"));
+      reject(new Error("Timed out waiting for character/outfit display prompt"));
     }, 1e4);
   });
 }
@@ -38710,7 +38711,7 @@ function LLM_CHAR_MODIFY_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_CHAR_MODIFY_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_CHAR_MODIFY_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6\u89D2\u8272/\u670D\u88C5\u4FEE\u6539\u63D0\u793A\u8BCD\u8D85\u65F6"));
+      reject(new Error("Timed out waiting for character/outfit modification prompt"));
     }, 1e4);
   });
 }
@@ -38729,7 +38730,7 @@ function LLM_TAG_MODIFY_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_TAG_MODIFY_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_TAG_MODIFY_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6Tag\u4FEE\u6539\u63D0\u793A\u8BCD\u8D85\u65F6"));
+      reject(new Error("Timed out waiting for tag modification prompt"));
     }, 1e4);
   });
 }
@@ -38748,7 +38749,7 @@ function LLM_VIDEO_ASSET_GEN_GET_PROMPT() {
     eventSource18.emit(eventNames.LLM_VIDEO_ASSET_GEN_GET_PROMPT_REQUEST, { id: promptRequestId });
     setTimeout(() => {
       eventSource18.removeListener(eventNames.LLM_VIDEO_ASSET_GEN_GET_PROMPT_RESPONSE, handler);
-      reject(new Error("\u83B7\u53D6\u89C6\u9891\u8D44\u4EA7\u751F\u6210\u63D0\u793A\u8BCD\u8D85\u65F6"));
+      reject(new Error("Timed out waiting for video asset prompt"));
     }, 1e4);
   });
 }
@@ -38781,7 +38782,7 @@ function LLM_EXECUTE(prompt2, { timeoutMs = 6e5 } = {}) {
     eventSource18.emit(eventNames.LLM_EXECUTE_REQUEST, { prompt: prompt2, id: executeRequestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error(`LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -38850,7 +38851,7 @@ function LLM_IMAGE_GEN(prompt2, { timeoutMs = 6e5 } = {}) {
         \u8D85\u65F6\u65F6\u95F4: `${timeoutMs}ms`
       });
       timer.end("\u8D85\u65F6");
-      reject(new Error(`\u6B63\u6587\u56FE\u7247\u751F\u6210 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Chat image LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -38892,7 +38893,7 @@ function LLM_VISUAL_MAT_PREP(prompt2, { timeoutMs = 6e5 } = {}) {
     timeoutTimer = setTimeout(() => {
       cleanup();
       timer.end("\u8D85\u65F6");
-      reject(new Error(`\u89C6\u6750\u51C6\u5907 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Visual asset preparation LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -38934,7 +38935,7 @@ function LLM_VIDEO_GEN(prompt2, { timeoutMs = 6e5 } = {}) {
     timeoutTimer = setTimeout(() => {
       cleanup();
       timer.end("\u8D85\u65F6");
-      reject(new Error(`\u56FE\u751F\u89C6\u9891 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Image-to-video LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -38976,7 +38977,7 @@ function LLM_VIDEO_ASSET_GEN(prompt2, { timeoutMs = 6e5 } = {}) {
     timeoutTimer = setTimeout(() => {
       cleanup();
       timer.end("\u8D85\u65F6");
-      reject(new Error(`\u89C6\u9891\u8D44\u4EA7\u751F\u6210 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Video asset LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -39013,7 +39014,7 @@ function LLM_CHAR_DESIGN2(prompt2, { timeoutMs = 6e5 } = {}) {
     eventSource18.emit(eventNames.LLM_CHAR_DESIGN_REQUEST, { prompt: prompt2, id: executeRequestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error(`\u89D2\u8272/\u670D\u88C5\u8BBE\u8BA1 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Character/outfit design LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -39050,7 +39051,7 @@ function LLM_CHAR_DISPLAY2(prompt2, { timeoutMs = 6e5 } = {}) {
     eventSource18.emit(eventNames.LLM_CHAR_DISPLAY_REQUEST, { prompt: prompt2, id: executeRequestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error(`\u89D2\u8272/\u670D\u88C5\u5C55\u793A LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Character/outfit display LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -39087,7 +39088,7 @@ function LLM_CHAR_MODIFY2(prompt2, { timeoutMs = 6e5 } = {}) {
     eventSource18.emit(eventNames.LLM_CHAR_MODIFY_REQUEST, { prompt: prompt2, id: executeRequestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error(`\u89D2\u8272/\u670D\u88C5\u4FEE\u6539 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Character/outfit modification LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -39124,7 +39125,7 @@ function LLM_TAG_MODIFY(prompt2, { timeoutMs = 6e5 } = {}) {
     eventSource18.emit(eventNames.LLM_TAG_MODIFY_REQUEST, { prompt: prompt2, id: executeRequestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error(`Tag\u4FEE\u6539 LLM \u6267\u884C\u8D85\u65F6\uFF08${timeoutMs}ms\uFF09`));
+      reject(new Error(`Tag modification LLM timed out (${timeoutMs}ms\uFF09`));
     }, timeoutMs);
   });
 }
@@ -39499,7 +39500,7 @@ function setupVideoDemandAssetSection(section, firstFrameSrc, selectedImages3) {
         if (firstFrameSrc) {
           const image = document.createElement("img");
           image.src = firstFrameSrc;
-          image.alt = "\u9996\u5E27\u53C2\u8003\u56FE\u7247";
+          image.alt = "First-frame reference image";
           preview.appendChild(image);
         } else {
           preview.textContent = "Current image";
@@ -39869,7 +39870,7 @@ function bindSelectedVideoAssetsToManifest(videoContent, selectedAssets) {
   const pictureOne = {
     ...existingPic1,
     label: "Picture 1",
-    entity_ref: existingPic1.entity_ref || "\u9996\u5E27\u53C2\u8003\u56FE\u7247",
+    entity_ref: existingPic1.entity_ref || "First-frame reference image",
     entity_type: existingPic1.entity_type || "keyframe",
     is_keyframe: true,
     usage: existingPic1.usage || "keyframe completion"
@@ -39903,7 +39904,7 @@ async function handleImageToVideoGen(targetEl, imgElement, button, dialogContext
         if (messages[i].role === "user") return i;
       }
       return -1;
-    }, attachImagesToMessage9 = function(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+    }, attachImagesToMessage9 = function(messages, messageIndex, images, imageLabel = "Reference image") {
       if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
         return messages;
       }
@@ -39987,7 +39988,7 @@ async function handleImageToVideoGen(targetEl, imgElement, button, dialogContext
     const characterTriggerText = characterTriggerTextParts.join("\n");
     let promt = buildPromptForRequestType("video_gen", entryTriggerText);
     if (!promt || promt.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"\u56FE\u751F\u89C6\u9891"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Image-to-video context preset in LLM settings.");
     }
     const characterListText = generateCharacterListText(characterTriggerText);
     const outfitEnableListText = generateOutfitEnableListText();
@@ -40016,21 +40017,21 @@ async function handleImageToVideoGen(targetEl, imgElement, button, dialogContext
     if (firstFrameBase64) {
       imagesToAttach.push({
         base64: firstFrameBase64,
-        name: "\u9996\u5E27\u53C2\u8003\u56FE\u7247",
-        description: "\u9996\u5E27\u53C2\u8003\u56FE\u7247"
+        name: "First-frame reference image",
+        description: "First-frame reference image"
       });
     }
     if (Array.isArray(userUploadedImages) && userUploadedImages.length > 0) {
       userUploadedImages.forEach((imgItem, idx) => {
         imagesToAttach.push({
           base64: typeof imgItem === "string" ? imgItem : imgItem.base64,
-          name: typeof imgItem === "object" && imgItem.pictureIndex ? `<Picture ${imgItem.pictureIndex}> ${imgItem.name || "\u89C6\u9891\u8D44\u4EA7"}` : typeof imgItem === "object" && imgItem.name ? imgItem.name : `\u53C2\u8003\u56FE\u7247${idx + 1}`,
-          description: `\u53C2\u8003\u56FE\u7247${idx + 1}`
+          name: typeof imgItem === "object" && imgItem.pictureIndex ? `<Picture ${imgItem.pictureIndex}> ${imgItem.name || "\u89C6\u9891\u8D44\u4EA7"}` : typeof imgItem === "object" && imgItem.name ? imgItem.name : `Reference image${idx + 1}`,
+          description: `Reference image${idx + 1}`
         });
       });
     }
     if (imagesToAttach.length > 0 && userMsgIndex >= 0) {
-      promt = attachImagesToMessage9(promt, userMsgIndex, imagesToAttach, "\u53C2\u8003\u56FE\u7247");
+      promt = attachImagesToMessage9(promt, userMsgIndex, imagesToAttach, "Reference image");
       debugLog("handleImageToVideoGen", `\u5DF2\u9644\u52A0 ${imagesToAttach.length} \u5F20\u56FE\u7247\u9644\u4EF6`);
     }
     updateCombinedPrompt(promt, "[\u56FE\u751F\u89C6\u9891] ");
@@ -40155,7 +40156,7 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
     popupTimer.end("\u7528\u6237\u5DF2\u54CD\u5E94");
     if (result === null) {
       debugBranch(requestType, "\u7528\u6237\u53D6\u6D88\u8BF7\u6C42", true);
-      debugLog(requestType, `\u7528\u6237\u53D6\u6D88\u4E86${title}\u8BF7\u6C42`);
+      debugLog(requestType, `User cancelled ${title}request`);
       toastr.info(`Canceled ${title} request`);
       mainTimer.end("\u7528\u6237\u53D6\u6D88");
       return;
@@ -40226,7 +40227,7 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
   let promt = buildPromptForRequestType(requestType, entryTriggerText);
   buildTimer.end(`\u6D88\u606F\u6570\u91CF: ${promt?.length || 0}`);
   if (!promt || promt.length === 0) {
-    throw new Error(`\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"${title}"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E`);
+    throw new Error(`No prompt available. Check the LLM context preset for "${title}".`);
   }
   const characterListText = generateCharacterListText(characterTriggerText);
   const outfitEnableListText = generateOutfitEnableListText();
@@ -40268,7 +40269,7 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
   const { messages: processedMessages, replacedVariables } = await replaceAllPlaceholders(promt, contextData);
   promt = processedMessages;
   replaceTimer.end(`\u66FF\u6362\u4E86 ${replacedVariables.size} \u4E2A\u53D8\u91CF`);
-  function attachImagesToMessage9(messages, messageIndex, images2, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+  function attachImagesToMessage9(messages, messageIndex, images2, imageLabel = "Reference image") {
     if (!images2 || images2.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
       return messages;
     }
@@ -40337,7 +40338,7 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
       \u6570\u91CF: userUploadedImages.length,
       \u76EE\u6807\u6D88\u606F\u7D22\u5F15: userDemandMessageIndex
     });
-    promt = attachImagesToMessage9(promt, userDemandMessageIndex, userUploadedImages, "\u53C2\u8003\u56FE\u7247");
+    promt = attachImagesToMessage9(promt, userDemandMessageIndex, userUploadedImages, "Reference image");
   }
   try {
     debugLog(requestType, "\u6536\u96C6\u89D2\u8272/\u670D\u88C5\u56FE\u7247");
@@ -40415,9 +40416,9 @@ async function processImageLikeRequest(el, gestureId, requestType, title, llmFun
         mainTimer.end("\u7528\u6237\u4E2D\u6B62");
         return;
       }
-      console.error(`[promptReq] ${title} \u8BF7\u6C42\u5931\u8D25:`, llmErr);
+      console.error(`[promptReq] ${title} request failed: `, llmErr);
       toastr.error(`${title} request failed: ${llmErr?.message || "Unknown error"}`);
-      mainTimer.end("LLM \u8BF7\u6C42\u5931\u8D25");
+      mainTimer.end("LLM request failed");
       return;
     }
     llmTimer.end(`\u54CD\u5E94\u957F\u5EA6: ${llmResponse?.result?.length || 0}`);
@@ -40877,7 +40878,7 @@ function parseImageTagFromResponse(text) {
   console.warn("[parseImageTagFromResponse] No match found in text:", normalizedText.substring(0, 300));
   return null;
 }
-function attachImagesToMessage6(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage6(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
     return messages;
   }
@@ -40989,7 +40990,7 @@ async function handleTagModifyRequest(el, currentTag, inputEl, originalTag = nul
     const characterTriggerText = characterTriggerTextParts.join("\n");
     let prompt2 = buildPromptForRequestType("tag_modify", entryTriggerText);
     if (!prompt2 || prompt2.length === 0) {
-      throw new Error('\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"Tag\u4FEE\u6539"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E');
+      throw new Error("No prompt available. Check the Tag modification context preset in LLM settings.");
     }
     const characterListText = generateCharacterListText(characterTriggerText);
     const outfitEnableListText = generateOutfitEnableListText();
@@ -41011,7 +41012,7 @@ async function handleTagModifyRequest(el, currentTag, inputEl, originalTag = nul
     prompt2 = processedMessages;
     prompt2 = replacePlaceholder(prompt2, "{{\u5F53\u524Dtag}}", currentTag);
     if (userUploadedImages.length > 0 && userDemandMsgIndex !== -1) {
-      prompt2 = attachImagesToMessage6(prompt2, userDemandMsgIndex, userUploadedImages, "\u53C2\u8003\u56FE\u7247");
+      prompt2 = attachImagesToMessage6(prompt2, userDemandMsgIndex, userUploadedImages, "Reference image");
     }
     const diagnosticText = `[Tag\u4FEE\u6539] \u7528\u6237\u9700\u6C42: ${userDemand}${userUploadedImages.length > 0 ? `
 \u5DF2\u9644\u52A0 ${userUploadedImages.length} \u5F20\u53C2\u8003\u56FE\u7247` : ""}`;
@@ -41350,7 +41351,7 @@ async function showComfyUIInpaintDialog(img, button) {
       addLog("[Inpaint] \u51C6\u5907\u4E0A\u4F20\u56FE\u7247\u548C\u906E\u7F69\u5230ComfyUI...");
       const comfyuiUrl = extension_settings43[extensionName]?.comfyuiUrl?.trim();
       if (!comfyuiUrl) {
-        throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6EComfyUI\u5730\u5740");
+        throw new Error("Configure the ComfyUI URL in settings first");
       }
       const imageName = await uploadToComfyUI(originalBlob, "inpaint_image.png", comfyuiUrl);
       const maskName = await uploadToComfyUI(maskBlob, "inpaint_mask.png", comfyuiUrl);
@@ -41522,7 +41523,7 @@ async function showComfyUIInpaintDialog(img, button) {
       addLog("[Inpaint] \u51C6\u5907\u4E0A\u4F20\u56FE\u7247\u548C\u906E\u7F69\u5230ComfyUI...");
       const comfyuiUrl = extension_settings43[extensionName]?.comfyuiUrl?.trim();
       if (!comfyuiUrl) {
-        throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u914D\u7F6EComfyUI\u5730\u5740");
+        throw new Error("Configure the ComfyUI URL in settings first");
       }
       const imageName = await uploadToComfyUI(originalBlob, "inpaint_image.png", comfyuiUrl);
       const maskName = await uploadToComfyUI(maskBlob, "inpaint_mask.png", comfyuiUrl);
@@ -41565,7 +41566,7 @@ async function uploadToComfyUI(blob, filename, comfyuiUrl) {
   });
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`\u4E0A\u4F20\u5931\u8D25: ${text}`);
+    throw new Error(`Upload failed: ${text}`);
   }
   const result = await response.json();
   return result.name;
@@ -41916,7 +41917,7 @@ async function showNovelAIInpaintDialog(img, button) {
     testImage.crossOrigin = "anonymous";
     await new Promise((resolve, reject) => {
       testImage.onload = resolve;
-      testImage.onerror = () => reject(new Error("\u56FE\u7247\u52A0\u8F7D\u5931\u8D25"));
+      testImage.onerror = () => reject(new Error("Image loading failed"));
       testImage.src = img.src;
     });
   } catch (error) {
@@ -42500,7 +42501,7 @@ async function createCanvasContainer(img, isMobile3) {
   originalImage.crossOrigin = "anonymous";
   await new Promise((resolve, reject) => {
     originalImage.onload = resolve;
-    originalImage.onerror = () => reject(new Error("\u56FE\u7247\u52A0\u8F7D\u5931\u8D25"));
+    originalImage.onerror = () => reject(new Error("Image loading failed"));
     originalImage.src = img.src;
   });
   const originalWidth = originalImage.width;
@@ -43483,7 +43484,7 @@ function showImageSizePopup(button, inputEl, onConfirm) {
       ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"].forEach((ratio) => {
         const option = doc.createElement("option");
         option.value = ratio;
-        option.textContent = ratio;
+        option.textContent = optionLabel(ratio);
         if (ratio === currentWidth) option.selected = true;
         ratioSelect.appendChild(option);
       });
@@ -45464,7 +45465,7 @@ async function runningHubFetch(url, options = {}, timeoutMs = 6e4) {
   const abort = () => controller.abort(options.signal?.reason);
   if (options.signal?.aborted) abort();
   else options.signal?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(() => controller.abort(new Error("RunningHub \u8BF7\u6C42\u8D85\u65F6")), timeoutMs);
+  const timer = setTimeout(() => controller.abort(new Error("RunningHub request timed out")), timeoutMs);
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     const body = await response.arrayBuffer();
@@ -45488,7 +45489,7 @@ async function runningHubFetch(url, options = {}, timeoutMs = 6e4) {
 async function runningHubReadWithRetry(operation, { signal, maxAttempts = 4 } = {}) {
   const delays = [1e3, 2e3, 4e3];
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (signal?.aborted) throw signal.reason || new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+    if (signal?.aborted) throw signal.reason || new Error("Task cancelled");
     try {
       return await operation();
     } catch (error) {
@@ -45502,7 +45503,7 @@ async function runningHubReadWithRetry(operation, { signal, maxAttempts = 4 } = 
         const t = setTimeout(resolve, delayMs);
         signal?.addEventListener("abort", () => {
           clearTimeout(t);
-          reject(signal.reason || new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88"));
+          reject(signal.reason || new Error("Task cancelled"));
         }, { once: true });
       });
     }
@@ -45605,7 +45606,7 @@ var init_runninghubScheduler = __esm({
       acquire({ apiKeys, abortSignal, taskId, isTaskCancelled, priority = "normal", timeoutMs = 6e5 } = {}) {
         return new Promise((resolve, reject) => {
           if (abortSignal?.aborted || typeof isTaskCancelled === "function" && isTaskCancelled()) {
-            return reject(new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88"));
+            return reject(new Error("Task cancelled"));
           }
           const waiter = {
             taskId,
@@ -45618,9 +45619,9 @@ var init_runninghubScheduler = __esm({
             reject,
             settled: false
           };
-          waiter.abort = () => this.finishWaiter(waiter, new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88"));
+          waiter.abort = () => this.finishWaiter(waiter, new Error("Task cancelled"));
           abortSignal?.addEventListener("abort", waiter.abort, { once: true });
-          waiter.timer = setTimeout(() => this.finishWaiter(waiter, new Error("\u7B49\u5F85 RunningHub \u901A\u9053\u8D85\u65F6 (10\u5206\u949F)")), timeoutMs);
+          waiter.timer = setTimeout(() => this.finishWaiter(waiter, new Error("Timed out waiting for a RunningHub channel (10 minutes)")), timeoutMs);
           if (priority === "high") {
             this.waiters.unshift(waiter);
           } else {
@@ -45655,7 +45656,7 @@ var init_runninghubScheduler = __esm({
           const allConfigured = this.keys();
           const keys = [...new Set(w.apiKeys?.length ? w.apiKeys : allConfigured)];
           if (!keys.length) {
-            this.finishWaiter(w, new Error("\u672A\u914D\u7F6E\u4EFB\u4F55 RunningHub API Key"));
+            this.finishWaiter(w, new Error("No RunningHub API keys configured"));
             continue;
           }
           const candidates = [];
@@ -45705,20 +45706,20 @@ var init_runninghubScheduler = __esm({
           if (!candidates.length) {
             if (this.totalActive() === 0) {
               if (pausedCount === keys.length) {
-                this.finishWaiter(w, new Error("\u914D\u7F6E\u7684\u5168\u90E8 RunningHub API Key \u5747\u5904\u4E8E\u6682\u505C\u72B6\u6001\uFF0C\u8BF7\u5728\u8BBE\u7F6E\u4E2D\u6062\u590D\u542F\u7528\uFF01"));
+                this.finishWaiter(w, new Error("All RunningHub API keys are paused. Resume them in settings."));
                 continue;
               }
               if (networkFailCount > 0 && networkFailCount + pausedCount === keys.length) {
-                this.finishWaiter(w, new Error("RunningHub \u670D\u52A1\u8FDE\u63A5\u5931\u8D25\u6216\u7F51\u7EDC\u5F02\u5E38\uFF0C\u8BF7\u68C0\u67E5\u7F51\u7EDC\u8FDE\u63A5\u4E0E\u63A5\u53E3\u5730\u5740\uFF01"));
+                this.finishWaiter(w, new Error("Cannot connect to RunningHub. Check your connection and API URL."));
                 continue;
               }
               if (cooldownCount === 0) {
                 if (authInvalidCount > 0 && authInvalidCount + pausedCount === keys.length) {
-                  this.finishWaiter(w, new Error("\u914D\u7F6E\u7684 RunningHub API Key \u9274\u6743\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u8BBE\u7F6E\u4E2D\u7684 Key \u662F\u5426\u6709\u6548\uFF01"));
+                  this.finishWaiter(w, new Error("RunningHub authentication failed. Check your API keys in settings."));
                   continue;
                 }
                 if (zeroBalanceCount > 0 && zeroBalanceCount + pausedCount === keys.length) {
-                  this.finishWaiter(w, new Error("\u914D\u7F6E\u7684\u5168\u90E8\u53EF\u7528 RunningHub API Key \u989D\u5EA6\uFF08\u79EF\u5206\u3001RH\u5E01\u3001\u94B1\u5305\u4F59\u989D\uFF09\u5747\u5C0F\u4E8E\u7B49\u4E8E0\uFF0C\u8BF7\u5145\u503C\u540E\u91CD\u8BD5\uFF01"));
+                  this.finishWaiter(w, new Error("All available RunningHub API keys have no remaining points, RH coins, or wallet balance. Top up and try again."));
                   continue;
                 }
               }
@@ -46005,7 +46006,7 @@ function getAllRunningHubApiKeys() {
   return parseRunningHubApiKeys(rawKey);
 }
 async function fetchRunningHubAccountStatus(apiKey) {
-  if (!apiKey) throw new Error("API Key \u4E0D\u80FD\u4E3A\u7A7A");
+  if (!apiKey) throw new Error("API key cannot be empty");
   const res = await fetch("https://www.runninghub.ai/uc/openapi/accountStatus", {
     method: "POST",
     headers: {
@@ -46020,7 +46021,7 @@ async function fetchRunningHubAccountStatus(apiKey) {
   return data;
 }
 async function fetchRunningHubQueueStatus(apiKey) {
-  if (!apiKey) throw new Error("API Key \u4E0D\u80FD\u4E3A\u7A7A");
+  if (!apiKey) throw new Error("API key cannot be empty");
   const res = await fetch("https://www.runninghub.ai/openapi/v2/queue/status", {
     method: "GET",
     headers: {
@@ -46059,7 +46060,7 @@ async function checkKeyQueueAvailability(apiKey) {
         apiKeyType: "UNKNOWN",
         raw: data,
         errorCode: data?.code ?? data?.errorCode ?? null,
-        error: data?.msg || data?.errorMessage || "\u67E5\u8BE2\u961F\u5217\u72B6\u6001\u5931\u8D25"
+        error: data?.msg || data?.errorMessage || "Failed to check queue status"
       };
     }
   } catch (err) {
@@ -46073,7 +46074,7 @@ async function checkKeyQueueAvailability(apiKey) {
       apiKeyType: "UNKNOWN",
       raw: null,
       errorCode: -1,
-      error: err.message || "\u7F51\u7EDC\u8FDE\u63A5\u5F02\u5E38"
+      error: err.message || "Network connection error"
     };
   }
 }
@@ -46111,7 +46112,7 @@ async function checkKeyHasBalance(apiKey, forceRefresh = false) {
         raw: data,
         errorCode: data?.code ?? data?.errorCode ?? null,
         timestamp: now,
-        error: data?.msg || data?.errorMessage || "\u67E5\u8BE2\u8D26\u6237\u72B6\u6001\u5931\u8D25"
+        error: data?.msg || data?.errorMessage || "Failed to check account status"
       };
       balanceCache.set(apiKey, result);
       return result;
@@ -46124,7 +46125,7 @@ async function checkKeyHasBalance(apiKey, forceRefresh = false) {
       remainCoins: 0,
       remainMoney: 0,
       errorCode: -1,
-      error: err.message || "\u7F51\u7EDC\u8FDE\u63A5\u5F02\u5E38",
+      error: err.message || "Network connection error",
       timestamp: now
     };
   }
@@ -46146,7 +46147,7 @@ async function acquireRunningHubKey(options = {}) {
 async function getUsableRunningHubKeyForUpload() {
   const keys = getAllRunningHubApiKeys();
   if (keys.length === 0) {
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   for (const key of keys) {
     const bal = await checkKeyHasBalance(key);
@@ -46286,13 +46287,13 @@ function checkNodeSkippable(nodeId, workflow, connections, objectInfo = {}) {
       return {
         canSkip: true,
         supportsTypeMatch: true,
-        reason: `\u652F\u6301\u7C7B\u578B\u5339\u914D\uFF1A${validInputConnections.length} \u4E2A\u4E0D\u540C\u7C7B\u578B\u7684\u8F93\u5165`
+        reason: `Compatible input types: ${validInputConnections.length} distinct input types`
       };
     }
   }
   return {
     canSkip: false,
-    reason: `\u6B64\u8282\u70B9\u6709 ${validInputConnections.length} \u4E2A\u8F93\u5165\u8FDE\u63A5${hasObjectInfo ? "\uFF08\u542B\u76F8\u540C\u7C7B\u578B\uFF09" : ""}\uFF0C\u8DF3\u8FC7\u540E\u65E0\u6CD5\u81EA\u52A8\u786E\u5B9A\u8FDE\u7EBF\u8D70\u5411\uFF0C\u56E0\u6B64\u6682\u4E0D\u652F\u6301\u8DF3\u8FC7`
+    reason: `This node has ${validInputConnections.length} input connections${hasObjectInfo ? "\uFF08\u542B\u76F8\u540C\u7C7B\u578B\uFF09" : ""}. Skipping it would make routing ambiguous, so this node cannot be skipped.`
   };
 }
 function processSkippedNodes(workflow, objectInfo = {}) {
@@ -46524,13 +46525,13 @@ function worker_new() {
         return;
       }
       const selectElement = document.getElementById("workerid");
-      let newOption = new Option(newName, newName);
-      newOption.title = newName;
+      let newOption = new Option(optionLabel(newName), newName);
+      newOption.title = optionLabel(newName);
       selectElement.add(newOption);
       const editSelectElement = document.getElementById("editWorkerid");
       if (editSelectElement) {
-        let editOption = new Option(newName, newName);
-        editOption.title = newName;
+        let editOption = new Option(optionLabel(newName), newName);
+        editOption.title = optionLabel(newName);
         editSelectElement.add(editOption);
       }
       selectElement.value = newName;
@@ -46581,8 +46582,8 @@ function worker_save() {
     if (result) {
       const worker = document.getElementById("worker");
       const selectElement = document.getElementById("workerid");
-      let newOption = new Option(result, result);
-      newOption.title = result;
+      let newOption = new Option(optionLabel(result), result);
+      newOption.title = optionLabel(result);
       if (!settings3.workers.hasOwnProperty(result)) {
         selectElement.add(newOption);
       }
@@ -46731,8 +46732,8 @@ async function worker_import() {
             settings3.workers[name] = workflowData;
             const selectElement = document.getElementById("workerid");
             if (selectElement && isNew) {
-              const newOption = new Option(name, name);
-              newOption.title = name;
+              const newOption = new Option(optionLabel(name), name);
+              newOption.title = optionLabel(name);
               selectElement.add(newOption);
             }
             selectElement.value = name;
@@ -46740,8 +46741,8 @@ async function worker_import() {
             settings3.worker = workflowData;
             const editSelectElement = document.getElementById("editWorkerid");
             if (editSelectElement && isNew) {
-              const editOption = new Option(name, name);
-              editOption.title = name;
+              const editOption = new Option(optionLabel(name), name);
+              editOption.title = optionLabel(name);
               editSelectElement.add(editOption);
             }
             const workerTextarea = document.getElementById("worker");
@@ -46764,13 +46765,13 @@ async function worker_import() {
               if (isNew) {
                 newWorkflowsCount++;
                 if (selectElement) {
-                  const newOption = new Option(key, key);
-                  newOption.title = key;
+                  const newOption = new Option(optionLabel(key), key);
+                  newOption.title = optionLabel(key);
                   selectElement.add(newOption);
                 }
                 if (editSelectElement) {
-                  const editOption = new Option(key, key);
-                  editOption.title = key;
+                  const editOption = new Option(optionLabel(key), key);
+                  editOption.title = optionLabel(key);
                   editSelectElement.add(editOption);
                 }
               }
@@ -46925,7 +46926,7 @@ function createInputControl(inputName, inputDef, currentValue, onChange) {
     typeInfo.forEach((option) => {
       const opt = document.createElement("option");
       opt.value = option;
-      opt.textContent = option;
+      opt.textContent = optionLabel(option);
       if (option === currentValue) {
         opt.selected = true;
         hasMatch = true;
@@ -47385,8 +47386,8 @@ async function visualizeWorkflow() {
           const name = newName.trim();
           const selectElement = document.getElementById("workerid");
           if (!settings3.workers.hasOwnProperty(name)) {
-            const newOption = new Option(name, name);
-            newOption.title = name;
+            const newOption = new Option(optionLabel(name), name);
+            newOption.title = optionLabel(name);
             selectElement.add(newOption);
           }
           selectElement.value = name;
@@ -47436,13 +47437,13 @@ function editWorker_new() {
         return;
       }
       const selectElement = document.getElementById("editWorkerid");
-      let newOption = new Option(newName, newName);
-      newOption.title = newName;
+      let newOption = new Option(optionLabel(newName), newName);
+      newOption.title = optionLabel(newName);
       selectElement.add(newOption);
       const workerSelectElement = document.getElementById("workerid");
       if (workerSelectElement) {
-        let workerOption = new Option(newName, newName);
-        workerOption.title = newName;
+        let workerOption = new Option(optionLabel(newName), newName);
+        workerOption.title = optionLabel(newName);
         workerSelectElement.add(workerOption);
       }
       selectElement.value = newName;
@@ -47494,13 +47495,13 @@ function editWorker_save() {
       const editWorker = document.getElementById("editWorker");
       const selectElement = document.getElementById("editWorkerid");
       const workerSelectElement = document.getElementById("workerid");
-      let newOption = new Option(result, result);
-      newOption.title = result;
+      let newOption = new Option(optionLabel(result), result);
+      newOption.title = optionLabel(result);
       if (!settings3.workers.hasOwnProperty(result)) {
         selectElement.add(newOption);
         if (workerSelectElement) {
-          let workerOption = new Option(result, result);
-          workerOption.title = result;
+          let workerOption = new Option(optionLabel(result), result);
+          workerOption.title = optionLabel(result);
           workerSelectElement.add(workerOption);
         }
       }
@@ -47634,12 +47635,12 @@ async function editWorker_import() {
             const selectElement = document.getElementById("editWorkerid");
             const workerSelectElement = document.getElementById("workerid");
             if (selectElement && isNew) {
-              const newOption = new Option(name, name);
-              newOption.title = name;
+              const newOption = new Option(optionLabel(name), name);
+              newOption.title = optionLabel(name);
               selectElement.add(newOption);
               if (workerSelectElement) {
-                const workerOption = new Option(name, name);
-                workerOption.title = name;
+                const workerOption = new Option(optionLabel(name), name);
+                workerOption.title = optionLabel(name);
                 workerSelectElement.add(workerOption);
               }
             }
@@ -47666,13 +47667,13 @@ async function editWorker_import() {
               if (isNew) {
                 newWorkflowsCount++;
                 if (selectElement) {
-                  const newOption = new Option(key, key);
-                  newOption.title = key;
+                  const newOption = new Option(optionLabel(key), key);
+                  newOption.title = optionLabel(key);
                   selectElement.add(newOption);
                 }
                 if (workerSelectElement) {
-                  const workerOption = new Option(key, key);
-                  workerOption.title = key;
+                  const workerOption = new Option(optionLabel(key), key);
+                  workerOption.title = optionLabel(key);
                   workerSelectElement.add(workerOption);
                 }
               }
@@ -48040,7 +48041,7 @@ async function generateComfyUIImage({ prompt: link, width: Xwidth, height: Xheig
     toastr.error("Fixed prompt preset not found. Create or select one in extension settings.", "ComfyUI generation error");
     taskQueue.completeTask(taskId, false);
     activeComfyuiTasks.delete(taskId);
-    throw new Error("\u56FA\u5B9A\u63D0\u793A\u8BCD\u9884\u8BBE\u672A\u914D\u7F6E");
+    throw new Error("No fixed prompt preset configured");
   }
   const _comfyui_preset = extension_settings49[extensionName].yushe[_comfyui_yushe_id];
   let prompt2 = await zhengmian(
@@ -48139,7 +48140,7 @@ async function generateComfyUIImage({ prompt: link, width: Xwidth, height: Xheig
     "inpaint_negative": window.comfyuiInpaintNegativePrompt || ""
   };
   if (!payload.MODEL_NAME) {
-    throw new Error("ComfyUI \u6A21\u578B\u540D\u4E3A\u7A7A\u6216\u53EA\u5305\u542B\u7A7A\u767D\u5B57\u7B26\u3002");
+    throw new Error("ComfyUI model name cannot be empty.");
   }
   const report = `
 -- - \u751F\u56FE\u53C2\u6570\u62A5\u544A-- -
@@ -48190,7 +48191,7 @@ Scheduler: ${payload.scheduler}
       workflowToUse = JSON.stringify(workflowObj);
     }
   } catch (e) {
-    throw new Error(`ComfyUI \u5DE5\u4F5C\u6D41 JSON \u65E0\u6548: ${e.message}`);
+    throw new Error(`Invalid ComfyUI workflow JSON: ${e.message}`);
   }
   payload = await replacepro(payload, workflowToUse);
   payload = JSON.stringify({ client_id: clientId, prompt: JSON.parse(payload) });
@@ -48198,7 +48199,7 @@ Scheduler: ${payload.scheduler}
   try {
     if (!taskQueue.isTaskInQueue(taskId)) {
       addLog("\u6B63\u5F0F\u8BF7\u6C42\u524D\u68C0\u6D4B\u5230\u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88\u3002");
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     let imageUrl;
     if (extension_settings49[extensionName].client === "jiuguan") {
@@ -48215,7 +48216,7 @@ Scheduler: ${payload.scheduler}
         const errorText = await response.text();
         addLog(`API \u8BF7\u6C42\u5931\u8D25(jiuguan client): ${errorText} `);
         taskQueue.completeTask(taskId, false);
-        throw new Error(`\u8BF7\u6C42\u5931\u8D25, \u72B6\u6001\u7801: ${response.status}, \u8BE6\u60C5: ${errorText} `);
+        throw new Error(`Request failed. HTTP status: ${response.status}, details: ${errorText} `);
       }
       const responseText = await response.text();
       let format, data;
@@ -48275,7 +48276,7 @@ Scheduler: ${payload.scheduler}
       if (!response.ok) {
         const errorText = await response.text();
         addLog(`API \u8BF7\u6C42\u5931\u8D25 (direct comfyui): ${errorText}`);
-        throw new Error(`\u8BF7\u6C42\u5931\u8D25,\u72B6\u6001\u7801: ${response.status}, \u8BE6\u60C5: ${errorText}`);
+        throw new Error(`Request failed. HTTP status: ${response.status}, details: ${errorText}`);
       }
       const r = await response.json();
       let id = r.prompt_id;
@@ -48304,7 +48305,7 @@ Scheduler: ${payload.scheduler}
             } catch (e) {
               console.warn("[ComfyUI] \u4E2D\u65AD\u8BF7\u6C42\u5931\u8D25:", e);
             }
-            throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+            throw new Error("Task cancelled");
           }
           const response2 = await fetchHistory(url, id, { headers: getComfyUIHeaders(), signal: abortController.signal });
           if (!response2.ok) {
@@ -48323,7 +48324,7 @@ Scheduler: ${payload.scheduler}
                   addLog(`\u6D88\u606F ${idx + 1}: ${JSON.stringify(msg)}`);
                 });
               }
-              let errorMessage = "ComfyUI \u6267\u884C\u9519\u8BEF";
+              let errorMessage = "ComfyUI execution error";
               if (errorInfo.exception_message) {
                 errorMessage = errorInfo.exception_message;
                 addLog(`\u5F02\u5E38\u4FE1\u606F: ${errorInfo.exception_message}`);
@@ -48382,7 +48383,7 @@ Scheduler: ${payload.scheduler}
             };
             let imageInfo = getImageInfoFromOutputs(re[id]["outputs"]);
             if (!imageInfo) {
-              throw new Error("\u672A\u80FD\u4ECEAPI\u54CD\u5E94\u4E2D\u627E\u5230\u6587\u4EF6\u540D\u3002");
+              throw new Error("API response did not include a filename.");
             }
             mediaInfo = imageInfo;
             window._lastMediaInfo = imageInfo;
@@ -48391,7 +48392,7 @@ Scheduler: ${payload.scheduler}
             let fileurl = `${url}/view?filename=${imageInfo.filename}&subfolder=${encodeURIComponent(imageInfo.subfolder)}&type=output`;
             const imageResponse = await fetch(fileurl, { headers: getComfyUIHeaders(), signal: abortController.signal });
             if (!imageResponse.ok) {
-              throw new Error(`\u83B7\u53D6\u56FE\u7247\u5931\u8D25,\u72B6\u6001\u7801: ${imageResponse.status}`);
+              throw new Error(`Failed to fetch image. HTTP status: ${imageResponse.status}`);
             }
             let blob = await imageResponse.blob();
             if (imageInfo.isVideo) {
@@ -48438,7 +48439,7 @@ Scheduler: ${payload.scheduler}
           if (elapsed > timeoutMs || ii > Math.ceil(timeoutMs / 1e3)) {
             const minutes = Math.round(timeoutMs / 6e4);
             addLog(`ComfyUI \u8F6E\u8BE2\u8D85\u65F6\uFF08\u5DF2\u7B49\u5F85 ${(elapsed / 1e3).toFixed(0)} \u79D2 / ${minutes} \u5206\u949F\uFF09\uFF0C\u670D\u52A1\u5668\u53EF\u80FD\u4ECD\u5728\u6392\u961F\u6216\u5DF2\u65AD\u5F00\u8FDE\u63A5\u3002`);
-            throw new Error(`ComfyUI \u670D\u52A1\u5668\u8D85\u65F6\uFF08\u5DF2\u8D85\u8FC7 ${minutes} \u5206\u949F\uFF09\u3002`);
+            throw new Error(`ComfyUI server timed out (more than ${minutes} minutes).`);
           }
         } catch (error) {
           addLog(`\u8F6E\u8BE2\u65F6\u53D1\u751F\u5F02\u5E38: ${error}`);
@@ -48446,7 +48447,7 @@ Scheduler: ${payload.scheduler}
         }
       }
       if (!imageUrl) {
-        throw new Error("\u672A\u80FD\u751F\u6210\u56FE\u7247 URL\u3002");
+        throw new Error("Could not generate an image URL.");
       }
       const isVideo = mediaInfo?.isVideo ?? (window._lastMediaInfo?.isVideo || false);
       const mediaFormat = mediaInfo?.format || window._lastMediaInfo?.format || "image";
@@ -48460,7 +48461,7 @@ Scheduler: ${payload.scheduler}
     }
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : String(error);
-    const isAborted = rawMessage === "\u4EFB\u52A1\u5DF2\u53D6\u6D88" || abortController.signal.aborted || !taskQueue.isTaskInQueue(taskId);
+    const isAborted = rawMessage === "Task cancelled" || abortController.signal.aborted || !taskQueue.isTaskInQueue(taskId);
     const propagatedMessage = rawMessage === "Failed to fetch" || rawMessage === "Load failed" ? `ComfyUI \u8BF7\u6C42\u5931\u8D25\uFF0C\u53EF\u80FD\u662F\u670D\u52A1\u4E0D\u53EF\u8FBE\u3001\u8DE8\u57DF\u3001\u4EE3\u7406\u5F02\u5E38\u6216\u8FD4\u56DE\u4E86\u65E0\u6548\u54CD\u5E94: ${rawMessage}` : rawMessage;
     if (isAborted) {
       toastr.info(`Canceled ${taskTypeName}`);
@@ -48751,7 +48752,7 @@ async function readOpenAIResponse(response) {
     try {
       return JSON.parse(text);
     } catch (e) {
-      throw new Error(`\u65E0\u6CD5\u89E3\u6790\u54CD\u5E94 JSON: ${e.message}; \u539F\u59CB\u54CD\u5E94: ${text.slice(0, 500)}`);
+      throw new Error(`Failed to parse response JSON: ${e.message}; raw response: ${text.slice(0, 500)}`);
     }
   }
   addLog("[Banana] \u68C0\u6D4B\u5230 SSE \u6D41\u5F0F\u54CD\u5E94\uFF0C\u5F00\u59CB\u805A\u5408 chunk");
@@ -48964,14 +48965,14 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
             return { image: videoDataUrl, change: changeClean || prompt2, isVideo: true, format: "video/mp4", originalUrl: videoUrl, genParams: _videoGenParams };
           } catch (fetchError) {
             addLog(`[Banana] Failed to download video: ${fetchError.message}`);
-            throw new Error(`\u89C6\u9891\u4E0B\u8F7D\u5931\u8D25: ${fetchError.message}`);
+            throw new Error(`Video download failed: ${fetchError.message}`);
           }
         }
       }
       throw new Error("Video response did not contain a valid MP4 URL");
     } catch (error) {
       addLog(`[Banana] \u89C6\u9891\u6A21\u5F0F\u9519\u8BEF: ${error.message}`);
-      if (error.name === "AbortError" || error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88") {
+      if (error.name === "AbortError" || error.message === "Task cancelled") {
         addLog("[Banana] \u89C6\u9891\u751F\u6210\u88AB\u53D6\u6D88\u3002");
       } else {
         taskQueue.completeTask(taskId, false);
@@ -49146,7 +49147,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
         const formData = new FormData();
         const imageBlob = await dataUrlToBlob(primaryRefImage);
         if (!imageBlob) {
-          throw new Error("\u53C2\u8003\u56FE\u6570\u636E\u65E0\u6548\uFF0C\u65E0\u6CD5\u8F6C\u6362\u4E3A\u4E8C\u8FDB\u5236\u56FE\u7247\u6587\u4EF6");
+          throw new Error("Invalid reference image data: conversion to a binary image file failed");
         }
         formData.append("image", imageBlob, "image.png");
         formData.append("prompt", grokFinalPrompt);
@@ -49192,7 +49193,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
       const grokResult = await grokResponse.json();
       const item = grokResult?.data?.[0] || (Array.isArray(grokResult?.images) ? typeof grokResult.images[0] === "string" ? { b64_json: grokResult.images[0] } : grokResult.images[0] : null) || (grokResult?.image ? { b64_json: grokResult.image } : null);
       if (!item) {
-        throw new Error(`Grok \u54CD\u5E94\u7F3A\u5C11\u56FE\u7247\u6570\u636E (data[0]/images)\uFF0C\u539F\u59CB\u54CD\u5E94: ${JSON.stringify(grokResult).slice(0, 500)}`);
+        throw new Error(`Grok response is missing image data (data[0]/images). Raw response: ${JSON.stringify(grokResult).slice(0, 500)}`);
       }
       let imageUrl = "";
       const rawB642 = item.b64_json || item.base64;
@@ -49203,7 +49204,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
         addLog(`[Banana] Grok \u6A21\u5F0F\uFF1A\u4E0B\u8F7D\u56FE\u7247 URL ${item.url}`);
         const imgResp = await fetch(item.url, { headers: getDirectHeaders() });
         if (!imgResp.ok) {
-          throw new Error(`\u4E0B\u8F7D\u56FE\u7247\u5931\u8D25: ${imgResp.status}`);
+          throw new Error(`Image download failed: ${imgResp.status}`);
         }
         const blob = await imgResp.blob();
         imageUrl = await new Promise((resolve, reject) => {
@@ -49214,7 +49215,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
         });
       }
       if (!imageUrl) {
-        throw new Error("Grok \u54CD\u5E94\u672A\u5305\u542B\u56FE\u7247\uFF08b64_json/url \u5747\u4E3A\u7A7A\uFF09");
+        throw new Error("Grok returned no image (b64_json and url are empty)");
       }
       const rawUrl = item.url || "";
       const isVideo = Boolean(
@@ -49242,7 +49243,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
     } catch (error) {
       addLog(`[Banana] Grok \u6A21\u5F0F\u9519\u8BEF: ${error.message}`);
       console.error("[Banana] Grok mode error:", error);
-      if (error.name !== "AbortError" && error.message !== "\u4EFB\u52A1\u5DF2\u53D6\u6D88") {
+      if (error.name !== "AbortError" && error.message !== "Task cancelled") {
         taskQueue.completeTask(taskId, false);
       } else {
         addLog("[Banana] Grok \u6A21\u5F0F\u751F\u6210\u88AB\u53D6\u6D88\u3002");
@@ -49479,7 +49480,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
             return { image: videoDataUrl, change: change_ || "", isVideo: true, format: "video/mp4", originalUrl: videoUrl, genParams: _banana_gen_params };
           } catch (fetchError) {
             addLog(`[Banana] Failed to download video: ${fetchError.message}`);
-            throw new Error(`\u89C6\u9891\u4E0B\u8F7D\u5931\u8D25: ${fetchError.message}`);
+            throw new Error(`Video download failed: ${fetchError.message}`);
           }
         }
       }
@@ -49574,7 +49575,7 @@ async function generateBananaImage({ prompt: prompt2, width, height, change, ret
   } catch (error) {
     addLog(`[Banana] Fetch error: ${error.message}`);
     console.error("[Banana] Fetch error:", error);
-    if (error.name === "AbortError" || error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88") {
+    if (error.name === "AbortError" || error.message === "Task cancelled") {
       addLog("[Banana] \u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88\uFF0C\u4E2D\u65AD\u7F51\u7EDC\u8BF7\u6C42\u3002");
     } else {
       taskQueue.completeTask(taskId, false);
@@ -49727,13 +49728,13 @@ function handleCancelBananaTask(data) {
     eventSource22.emit(EventType.GENERATE_IMAGE_RESPONSE, {
       id: currentRequestId,
       success: false,
-      error: "\u4EFB\u52A1\u5DF2\u53D6\u6D88",
+      error: "Task cancelled",
       prompt: currentPrompt || ""
     });
     eventSource22.emit("generate-image-response", {
       id: currentRequestId,
       success: false,
-      error: "\u4EFB\u52A1\u5DF2\u53D6\u6D88",
+      error: "Task cancelled",
       prompt: currentPrompt || ""
     });
     if (currentAbortController) {
@@ -49794,7 +49795,7 @@ async function extractLargestMediaFromZip(arrayBuffer) {
   addLog("[RunningHub] \u5F00\u59CB\u89E3\u538B\u8F93\u51FA ZIP \u538B\u7F29\u5305...");
   const JSZipConstructor = window.stChatu8JSZip || window.JSZip;
   if (!JSZipConstructor || typeof JSZipConstructor.loadAsync !== "function") {
-    throw new Error("JSZip \u4E0D\u53EF\u7528\uFF0C\u65E0\u6CD5\u89E3\u538B ZIP \u6587\u4EF6");
+    throw new Error("JSZip is unavailable. Cannot extract ZIP files.");
   }
   const zip = await JSZipConstructor.loadAsync(arrayBuffer);
   addLog("[RunningHub] ZIP \u538B\u7F29\u5305\u52A0\u8F7D\u6210\u529F\uFF0C\u5F00\u59CB\u68C0\u7D22 files/ \u76EE\u5F55\u4E0B\u7684\u6587\u4EF6...");
@@ -49805,7 +49806,7 @@ async function extractLargestMediaFromZip(arrayBuffer) {
     }
   });
   if (fileEntries.length === 0) {
-    throw new Error("ZIP \u538B\u7F29\u5305\u5185\u672A\u627E\u5230\u4EFB\u4F55\u6709\u6548\u8F93\u51FA\u6587\u4EF6");
+    throw new Error("ZIP archive contains no valid output files");
   }
   addLog(`[RunningHub] \u53D1\u73B0 ${fileEntries.length} \u4E2A\u5019\u9009\u6587\u4EF6\uFF0C\u6B63\u5728\u5BFB\u627E\u4F53\u79EF\u6700\u5927\u7684\u4E3B\u5A92\u4F53\u6587\u4EF6...`);
   let largestEntry = null;
@@ -49826,7 +49827,7 @@ async function extractLargestMediaFromZip(arrayBuffer) {
     }
   }
   if (!largestEntry || !largestBase64) {
-    throw new Error("\u672A\u80FD\u6210\u529F\u63D0\u53D6 ZIP \u4E2D\u7684\u6587\u4EF6\u6570\u636E");
+    throw new Error("Failed to extract file data from ZIP archive");
   }
   const fileName = largestEntry.name.toLowerCase();
   let mimeType = "image/png";
@@ -49944,7 +49945,7 @@ function buildRunningHubWorkflow(rawJson, promptText, negativeText, genSettings)
     promptObj = JSON.parse(jsonStr);
   } catch (err) {
     console.error("[RunningHub] JSON \u89E3\u6790\u5931\u8D25:", jsonStr);
-    throw new Error("\u5DE5\u4F5C\u6D41 JSON \u6784\u5EFA\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u63D0\u793A\u8BCD\u6216\u6A21\u677F\u683C\u5F0F\u3002");
+    throw new Error("Failed to build workflow JSON. Check the prompt and template format.");
   }
   let rawTplObj = {};
   try {
@@ -50096,12 +50097,12 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
   if (!rawApiKey) {
     taskQueue.completeTask(taskId, false);
     currentTaskId3 = null;
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   if (!workflowId) {
     taskQueue.completeTask(taskId, false);
     currentTaskId3 = null;
-    throw new Error(`\u5F53\u524D\u3010${workflowCategoryName}\u3011\u9009\u4E2D\u7684\u9884\u8BBE "${targetWorkerid}" \u5C1A\u672A\u914D\u7F6E\u5DE5\u4F5C\u6D41 ID\uFF0C\u8BF7\u5728\u5DE5\u4F5C\u6D41\u8BBE\u7F6E\u4E2D\u586B\u5199`);
+    throw new Error(`The selected [${workflowCategoryName}] preset "${targetWorkerid}" has no workflow ID. Enter it in workflow settings.`);
   }
   addLog(`\u5F00\u59CB RunningHub \u751F\u56FE\u6D41\u7A0B\u3002\u5DE5\u4F5C\u6D41\u5206\u7C7B: \u3010${workflowCategoryName}\u3011\uFF0C\u5DE5\u4F5C\u6D41 ID: ${workflowId}`);
   addLog(`\u8BF7\u6C42\u5DE5\u4F5C\u6D41\u9884\u8BBE: ${targetWorkerid || "\u9ED8\u8BA4"}`);
@@ -50214,7 +50215,7 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
   const abortController = new AbortController();
   const onTaskCancelled = (data) => {
     if (data && data.taskId === taskId) {
-      abortController.abort(new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88"));
+      abortController.abort(new Error("Task cancelled"));
     }
   };
   eventSource23.on("st_chatu8_task_cancelled", onTaskCancelled);
@@ -50228,7 +50229,7 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
     while (true) {
       if (!taskQueue.isTaskInQueue(taskId) || abortSignal.aborted) {
         addLog("\u6B63\u5F0F\u8BF7\u6C42\u524D\u68C0\u6D4B\u5230\u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88\u3002");
-        throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+        throw new Error("Task cancelled");
       }
       addLog(`[RunningHub] \u6B63\u5728\u4ECE Key \u6C60\u5206\u914D\u7A7A\u95F2\u4E14\u6709\u4F59\u989D\u7684 API Key (\u4F18\u5148\u7EA7: ${isRetry ? "\u9AD8" : "\u666E\u901A"})...`);
       keyLease = await acquireRunningHubKey({
@@ -50272,16 +50273,16 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
           keyLease.setRemoteTaskId(runTaskId);
         }
         if (keyLease && typeof keyLease.isCancelled === "function" && keyLease.isCancelled() || abortSignal.aborted) {
-          throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+          throw new Error("Task cancelled");
         }
         addLog(`[RunningHub v2] \u4EFB\u52A1\u5DF2\u521B\u5EFA\uFF0CID: ${runTaskId}\uFF0C\u8FDB\u5165\u8F6E\u8BE2\u7B49\u5F85...`);
         break;
       }
-      const errMsg = formatRunningHubApiError({ ...createData, _workflowId: workflowId }, "\u521B\u5EFA RunningHub \u4EFB\u52A1\u5931\u8D25");
+      const errMsg = formatRunningHubApiError({ ...createData, _workflowId: workflowId }, "Failed to create RunningHub task");
       if (/TASK_QUEUE_MAXED/i.test(errMsg) || /queue.*max/i.test(errMsg) || /并发.*满/i.test(errMsg)) {
         maxedRetryCount++;
         if (maxedRetryCount > 5) {
-          throw new Error("RunningHub \u4E91\u7AEF\u5E76\u53D1\u961F\u5217\u6301\u7EED\u6EE1\u8F7D(\u5DF2\u91CD\u8BD55\u6B21)\uFF0C\u8BF7\u7A0D\u540E\u518D\u8BD5");
+          throw new Error("RunningHub queue is still full after 5 retries. Try again later.");
         }
         addLog(`[RunningHub] \u5B98\u65B9\u63D0\u793A\u961F\u5217\u5DF2\u6EE1 (${errMsg})\uFF0C\u91CA\u653E\u5F53\u524D Key \u5E76\u8F6C\u5165\u961F\u9996\u7B49\u5F85\u4F18\u5148\u91CD\u8BD5...`);
         if (keyLease && typeof keyLease.markRejected === "function") {
@@ -50304,7 +50305,7 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
       await sleep(2e3);
       if (!taskQueue.isTaskInQueue(taskId) || abortSignal.aborted) {
         addLog("\u8F6E\u8BE2\u671F\u95F4\u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88\u3002");
-        throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+        throw new Error("Task cancelled");
       }
       const statData = await runningHubReadWithRetry(async () => {
         const statRes = await runningHubFetch("https://www.runninghub.ai/openapi/v2/query", {
@@ -50332,17 +50333,17 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
           const rhDetailText2 = rhDetailParts2.length > 0 ? ` (${rhDetailParts2.join(", ")})` : "";
           addLog(`[RunningHub v2] \u83B7\u53D6\u5230\u8F93\u51FA URL: ${outputUrl}${rhDetailText2} (\u683C\u5F0F: ${mainItem.outputType || "\u672A\u77E5"}, Node: ${mainItem.nodeId})`);
         } else {
-          throw new Error("RunningHub \u4EFB\u52A1\u6210\u529F\u4F46\u672A\u8FD4\u56DE\u4EFB\u4F55\u8F93\u51FA\u6587\u4EF6");
+          throw new Error("RunningHub task completed without output files");
         }
         break;
       } else if (status === "FAILED") {
-        throw new Error(statData.errorMessage || "RunningHub \u4EFB\u52A1\u6267\u884C\u5931\u8D25");
+        throw new Error(statData.errorMessage || "RunningHub task failed");
       } else {
         addLog(`[RunningHub v2] \u4EFB\u52A1\u8FD0\u884C\u4E2D (${status || "QUEUED"})...`);
       }
       attempts++;
       if (attempts > 300) {
-        throw new Error("RunningHub \u4EFB\u52A1\u6267\u884C\u8D85\u65F6 (10\u5206\u949F)");
+        throw new Error("RunningHub task timed out (10 minutes)");
       }
     }
     addLog(`[RunningHub] \u6B63\u5728\u4E0B\u8F7D\u751F\u6210\u7684\u6587\u4EF6...`);
@@ -50412,7 +50413,7 @@ async function generateRunningHubImage({ prompt: link, width: Xwidth, height: Xh
     };
   } catch (err) {
     const rawMessage = err instanceof Error ? err.message : String(err);
-    if (rawMessage !== "\u4EFB\u52A1\u5DF2\u53D6\u6D88") {
+    if (rawMessage !== "Task cancelled") {
       taskQueue.completeTask(taskId, false);
       recordImageGeneration("runninghub", false);
       toastr.error(`RunningHub image generation failed: ${rawMessage}`);
@@ -50578,11 +50579,11 @@ function formatRunningHubApiError(data, defaultMsg = "\u8BF7\u6C42 RunningHub \u
   const errCode = data.errorCode || data.code;
   let errMsg = data.errorMessage || data.msg || defaultMsg;
   if (String(errCode) === "803" || /NODE_INFO_MISMATCH/i.test(errMsg)) {
-    return `\u5DE5\u4F5C\u6D41\u8282\u70B9\u4E0D\u5339\u914D (\u9519\u8BEF\u7801: 803): ${errMsg}\u3002
-\u3010\u6392\u67E5\u63D0\u793A\u3011\u5F53\u524D\u9884\u8BBE\u914D\u7F6E\u7684\u8986\u76D6\u8282\u70B9\u5728\u4E91\u7AEF\u5DE5\u4F5C\u6D41\u4E2D\u4E0D\u5B58\u5728\u6216\u5DF2\u88AB\u4FEE\u6539\u3002\u8BF7\u68C0\u67E5\u5F53\u524D\u9884\u8BBE\u7ED1\u5B9A\u7684\u5DE5\u4F5C\u6D41 ID (${data._workflowId || "\u76EE\u6807\u5DE5\u4F5C\u6D41"}) \u4E0E\u5BF9\u5E94\u7684 ComfyUI \u5DE5\u4F5C\u6D41 JSON \u6A21\u677F\u4E2D\u7684\u8282\u70B9 ID \u662F\u5426\u4E00\u81F4\uFF01`;
+    return `Workflow node mismatch (error code 803): ${errMsg}.
+The preset override refers to missing or changed cloud workflow nodes. Check that workflow ID (${data._workflowId || "Target workflow"}) matches the node IDs in its ComfyUI workflow JSON template.`;
   }
   if (errCode) {
-    return `RunningHub \u62A5\u9519 [\u4EE3\u7801 ${errCode}]: ${errMsg}`;
+    return `RunningHub error [code ${errCode}]: ${errMsg}`;
   }
   return errMsg;
 }
@@ -50590,7 +50591,7 @@ async function extractLargestMediaFromZip2(arrayBuffer) {
   addLog("[RunningHubRefVideo] \u5F00\u59CB\u89E3\u538B\u8F93\u51FA ZIP \u538B\u7F29\u5305...");
   const JSZipConstructor = window.stChatu8JSZip || window.JSZip;
   if (!JSZipConstructor || typeof JSZipConstructor.loadAsync !== "function") {
-    throw new Error("JSZip \u4E0D\u53EF\u7528\uFF0C\u65E0\u6CD5\u89E3\u538B ZIP \u6587\u4EF6");
+    throw new Error("JSZip is unavailable. Cannot extract ZIP files.");
   }
   const zip = await JSZipConstructor.loadAsync(arrayBuffer);
   const fileEntries = [];
@@ -50600,7 +50601,7 @@ async function extractLargestMediaFromZip2(arrayBuffer) {
     }
   });
   if (fileEntries.length === 0) {
-    throw new Error("ZIP \u538B\u7F29\u5305\u5185\u672A\u627E\u5230\u4EFB\u4F55\u6709\u6548\u8F93\u51FA\u6587\u4EF6");
+    throw new Error("ZIP archive contains no valid output files");
   }
   let largestEntry = null;
   let maxSizeBytes = -1;
@@ -50619,7 +50620,7 @@ async function extractLargestMediaFromZip2(arrayBuffer) {
     }
   }
   if (!largestEntry || !largestBase64) {
-    throw new Error("\u672A\u80FD\u6210\u529F\u63D0\u53D6 ZIP \u4E2D\u7684\u6587\u4EF6\u6570\u636E");
+    throw new Error("Failed to extract file data from ZIP archive");
   }
   const fileName = largestEntry.name.toLowerCase();
   let mimeType = "video/mp4";
@@ -50755,7 +50756,7 @@ function parseAssetManifest(rawPrompt) {
         manifest = JSON.parse(cleanedJson);
       } catch (secondErr) {
         console.error("[RunningHubRefVideo] asset_manifest JSON \u89E3\u6790\u5931\u8D25:", firstErr, jsonBlock.jsonStr);
-        throw new Error(`asset_manifest JSON \u683C\u5F0F\u9519\u8BEF: ${firstErr.message}`);
+        throw new Error(`Invalid asset_manifest JSON: ${firstErr.message}`);
       }
     }
     const rawJsonEndInFull = afterHeaderIndex + jsonBlock.end;
@@ -50793,10 +50794,10 @@ function parseAssetManifest(rawPrompt) {
           const usage = String(pic.usage || "").trim();
           const entityType = String(pic.entity_type || "").trim();
           const isKeyframeFlag = pic.is_keyframe === true || String(pic.is_keyframe).trim().toLowerCase() === "true";
-          const isFirstFrame = idx === 1 && (/首帧参考/i.test(entityRef) || entityRef === "\u9996\u5E27\u53C2\u8003\u56FE\u7247" || /keyframe(?:\s+completion)?/i.test(usage) || /keyframe/i.test(entityType) || isKeyframeFlag || /keyframe/i.test(entityRef));
+          const isFirstFrame = idx === 1 && (/首帧参考/i.test(entityRef) || entityRef === "First-frame reference image" || /keyframe(?:\s+completion)?/i.test(usage) || /keyframe/i.test(entityType) || isKeyframeFlag || /keyframe/i.test(entityRef));
           if (isFirstFrame) {
             isFirstFrameRef = true;
-            firstFramePicEntityRef = entityRef || "\u9996\u5E27\u53C2\u8003\u56FE\u7247";
+            firstFramePicEntityRef = entityRef || "First-frame reference image";
           }
           if (isValidMediaFileId(pic.file_id)) {
             if (idx >= 1 && idx <= 9) {
@@ -50867,7 +50868,7 @@ async function dataToBlob(data, defaultMime = "image/png") {
       return new Blob([bytes], { type: mime });
     }
   }
-  throw new Error("\u65E0\u6CD5\u8BC6\u522B\u7684\u6587\u4EF6\u6570\u636E\u683C\u5F0F");
+  throw new Error("Unrecognized file data format");
 }
 function createBlankPngBlob(width = 512, height = 512, color = "#000000") {
   return new Promise((resolve) => {
@@ -50892,7 +50893,7 @@ function createBlankPngBlob(width = 512, height = 512, color = "#000000") {
 async function uploadBlankPngWithCache(apiKey) {
   const validApiKey = await resolveUploadApiKey(apiKey);
   if (!validApiKey) {
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   const fileId = "__st_blank_placeholder_png__";
   const settings3 = extension_settings52[extensionName];
@@ -50921,7 +50922,7 @@ async function uploadBlankPngWithCache(apiKey) {
   });
   const resData = await res.json();
   if (resData.code !== 0 || !resData.data || !resData.data.fileName) {
-    throw new Error(`RunningHub \u7A7A\u767D\u515C\u5E95\u56FE\u4E0A\u4F20\u5931\u8D25: ${resData.msg || "\u672A\u77E5\u9519\u8BEF"}`);
+    throw new Error(`Failed to upload RunningHub placeholder image: ${resData.msg || "Unknown error"}`);
   }
   const uploadedFileName = resData.data.fileName;
   addLog(`[RunningHubRefVideo] \u7A7A\u767D\u515C\u5E95\u56FE\u4E0A\u4F20\u6210\u529F: ${uploadedFileName}`);
@@ -50962,7 +50963,7 @@ function createSilentWavBlob(durationSeconds = 1, sampleRate = 16e3) {
 async function uploadBlankAudioWithCache(apiKey) {
   const validApiKey = await resolveUploadApiKey(apiKey);
   if (!validApiKey) {
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   const fileId = "__st_blank_placeholder_aud__";
   const settings3 = extension_settings52[extensionName];
@@ -50991,7 +50992,7 @@ async function uploadBlankAudioWithCache(apiKey) {
   });
   const resData = await res.json();
   if (resData.code !== 0 || !resData.data || !resData.data.fileName) {
-    throw new Error(`RunningHub \u7A7A\u767D\u515C\u5E95\u97F3\u9891\u4E0A\u4F20\u5931\u8D25: ${resData.msg || "\u672A\u77E5\u9519\u8BEF"}`);
+    throw new Error(`Failed to upload RunningHub placeholder audio: ${resData.msg || "Unknown error"}`);
   }
   const uploadedFileName = resData.data.fileName;
   addLog(`[RunningHubRefVideo] \u7A7A\u767D\u515C\u5E95\u97F3\u9891\u4E0A\u4F20\u6210\u529F: ${uploadedFileName}`);
@@ -51006,7 +51007,7 @@ async function uploadImageBlobWithCache(imageSource, cacheKey, apiKey) {
   if (!imageSource) return null;
   const validApiKey = await resolveUploadApiKey(apiKey);
   if (!validApiKey) {
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   const settings3 = extension_settings52[extensionName];
   if (!settings3.runninghub_upload_cache) {
@@ -51038,7 +51039,7 @@ async function uploadImageBlobWithCache(imageSource, cacheKey, apiKey) {
   });
   const resData = await res.json();
   if (resData.code !== 0 || !resData.data || !resData.data.fileName) {
-    throw new Error(`RunningHub \u9996\u5E27\u53C2\u8003\u56FE\u7247\u4E0A\u4F20\u5931\u8D25: ${resData.msg || "\u672A\u77E5\u9519\u8BEF"}`);
+    throw new Error(`Failed to upload RunningHub first-frame reference: ${resData.msg || "Unknown error"}`);
   }
   const uploadedFileName = resData.data.fileName;
   addLog(`[RunningHubVideo] \u9996\u5E27\u53C2\u8003\u56FE\u7247\u4E0A\u4F20\u6210\u529F: ${uploadedFileName}`);
@@ -51053,7 +51054,7 @@ async function uploadMediaWithCache(fileId, kind, apiKey) {
   if (!fileId) return null;
   const validApiKey = await resolveUploadApiKey(apiKey);
   if (!validApiKey) {
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   const settings3 = extension_settings52[extensionName];
   if (!settings3.runninghub_upload_cache) {
@@ -51096,7 +51097,7 @@ async function uploadMediaWithCache(fileId, kind, apiKey) {
     }
   }
   if (!fileBlob) {
-    throw new Error(`\u627E\u4E0D\u5230\u672C\u5730\u5A92\u4F53\u6587\u4EF6\u6216\u5DF2\u4E22\u5931: ${fileId}`);
+    throw new Error(`Local media file is missing: ${fileId}`);
   }
   if (kind === "img") {
     try {
@@ -51120,7 +51121,7 @@ async function uploadMediaWithCache(fileId, kind, apiKey) {
   });
   const resData = await res.json();
   if (resData.code !== 0 || !resData.data || !resData.data.fileName) {
-    throw new Error(`RunningHub \u6587\u4EF6\u4E0A\u4F20\u5931\u8D25: ${resData.msg || "\u672A\u77E5\u9519\u8BEF"}`);
+    throw new Error(`RunningHub file upload failed: ${resData.msg || "Unknown error"}`);
   }
   const uploadedFileName = resData.data.fileName;
   addLog(`[RunningHubRefVideo] \u4E0A\u4F20\u6210\u529F: ${fileId} -> ${uploadedFileName}`);
@@ -51168,7 +51169,7 @@ function buildRunningHubRefVideoWorkflow(rawJson, promptText, uploadedImages, up
     promptObj = JSON.parse(jsonStr);
   } catch (err) {
     console.error("[RunningHubRefVideo] \u5DE5\u4F5C\u6D41 JSON \u89E3\u6790\u5931\u8D25:", jsonStr);
-    throw new Error("\u53C2\u8003\u89C6\u9891\u5DE5\u4F5C\u6D41 JSON \u6784\u5EFA\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u677F\u683C\u5F0F");
+    throw new Error("Failed to build reference-video workflow JSON. Check the template format.");
   }
   let rawTplObj = {};
   try {
@@ -51223,7 +51224,7 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
   const rawApiKey = settings3.runninghub_apiKey;
   if (!rawApiKey) {
     taskQueue.completeTask(taskId, false);
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 RunningHub API Key");
+    throw new Error("Enter a RunningHub API key in settings first");
   }
   const uploadApiKey = await getUsableRunningHubKeyForUpload();
   if (invalidPictures && invalidPictures.length > 0) {
@@ -51313,7 +51314,7 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
   let targetWorkerJson = targetWorkerId && settings3.runninghub_workers?.[targetWorkerId] || (isImg2Vid ? settings3.runninghub_img2vid_worker : settings3.runninghub_ref2vid_worker) || settings3.runninghub_workers?.[settings3.runninghub_workerid] || settings3.runninghub_worker || runninghubDefaultJson;
   if (!targetWorkflowId) {
     taskQueue.completeTask(taskId, false);
-    throw new Error(`\u5F53\u524D\u3010${workerCategoryName}\u3011\u9009\u4E2D\u7684\u9884\u8BBE "${targetWorkerId || "\u9ED8\u8BA4"}" \u5C1A\u672A\u914D\u7F6E\u5DE5\u4F5C\u6D41 ID\uFF0C\u8BF7\u5728 RunningHub \u8BBE\u7F6E\u7684\u3010${workerCategoryName}\u3011\u4E2D\u586B\u5199\u5BF9\u5E94\u7684 Workflow ID`);
+    throw new Error(`The selected [${workerCategoryName}] preset "${targetWorkerId || "Default"}" has no workflow ID. In RunningHub settings, open [${workerCategoryName}] and enter its workflow ID.`);
   }
   addLog(`[RunningHubVideo] \u4F7F\u7528\u3010${workerCategoryName}\u3011\u9884\u8BBE: "${targetWorkerId || "\u9ED8\u8BA4"}", \u5DE5\u4F5C\u6D41 ID: ${targetWorkflowId}`);
   const genSettings = {
@@ -51344,7 +51345,7 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
   });
   const abortController = new AbortController();
   const onTaskCancelled = (data) => {
-    if (data && data.taskId === taskId) abortController.abort(new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88"));
+    if (data && data.taskId === taskId) abortController.abort(new Error("Task cancelled"));
   };
   eventSource24.on("st_chatu8_task_cancelled", onTaskCancelled);
   const abortSignal = abortController.signal;
@@ -51356,7 +51357,7 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
   try {
     while (true) {
       if (!taskQueue.isTaskInQueue(taskId) || abortSignal.aborted) {
-        throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+        throw new Error("Task cancelled");
       }
       addLog(`[RunningHubVideo] \u6B63\u5728\u4ECE Key \u6C60\u5206\u914D\u7A7A\u95F2\u4E14\u6709\u4F59\u989D\u7684 API Key (\u4F18\u5148\u7EA7: ${isRetry ? "\u9AD8" : "\u666E\u901A"})...`);
       keyLease = await acquireRunningHubKey({
@@ -51400,16 +51401,16 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
           keyLease.setRemoteTaskId(runTaskId);
         }
         if (keyLease && typeof keyLease.isCancelled === "function" && keyLease.isCancelled() || abortSignal.aborted) {
-          throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+          throw new Error("Task cancelled");
         }
         addLog(`[RunningHubRefVideo v2] \u4EFB\u52A1\u5DF2\u521B\u5EFA\uFF0CID: ${runTaskId}\uFF0C\u8FDB\u5165\u8F6E\u8BE2\u7B49\u5F85...`);
         break;
       }
-      const errMsg = formatRunningHubApiError({ ...createData, _workflowId: targetWorkflowId }, "\u521B\u5EFA RunningHub \u89C6\u9891\u751F\u6210\u4EFB\u52A1\u5931\u8D25");
+      const errMsg = formatRunningHubApiError({ ...createData, _workflowId: targetWorkflowId }, "Failed to create RunningHub video task");
       if (/TASK_QUEUE_MAXED/i.test(errMsg) || /queue.*max/i.test(errMsg) || /并发.*满/i.test(errMsg)) {
         maxedRetryCount++;
         if (maxedRetryCount > 5) {
-          throw new Error("RunningHub \u89C6\u9891\u4E91\u7AEF\u961F\u5217\u6301\u7EED\u6EE1\u8F7D(\u5DF2\u91CD\u8BD55\u6B21)\uFF0C\u8BF7\u7A0D\u540E\u518D\u8BD5");
+          throw new Error("RunningHub video queue is still full after 5 retries. Try again later.");
         }
         addLog(`[RunningHubRefVideo] \u5B98\u65B9\u63D0\u793A\u961F\u5217\u5DF2\u6EE1 (${errMsg})\uFF0C\u91CA\u653E\u5F53\u524D Key \u5E76\u8F6C\u5165\u961F\u9996\u7B49\u5F85\u4F18\u5148\u91CD\u8BD5...`);
         if (keyLease && typeof keyLease.markRejected === "function") {
@@ -51431,7 +51432,7 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
     while (true) {
       await sleep(3e3);
       if (!taskQueue.isTaskInQueue(taskId) || abortSignal.aborted) {
-        throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+        throw new Error("Task cancelled");
       }
       const statData = await runningHubReadWithRetry(async () => {
         const statRes = await runningHubFetch("https://www.runninghub.ai/openapi/v2/query", {
@@ -51459,17 +51460,17 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
           const rhDetailText2 = rhDetailParts2.length > 0 ? ` (${rhDetailParts2.join(", ")})` : "";
           addLog(`[RunningHubRefVideo v2] \u83B7\u53D6\u5230\u8F93\u51FA URL: ${outputUrl}${rhDetailText2} (\u683C\u5F0F: ${mainItem.outputType || "\u672A\u77E5"}, Node: ${mainItem.nodeId})`);
         } else {
-          throw new Error("RunningHub \u4EFB\u52A1\u6210\u529F\u4F46\u672A\u8FD4\u56DE\u4EFB\u4F55\u8F93\u51FA\u6587\u4EF6");
+          throw new Error("RunningHub task completed without output files");
         }
         break;
       } else if (status === "FAILED") {
-        throw new Error(statData.errorMessage || "RunningHub \u4EFB\u52A1\u6267\u884C\u5931\u8D25");
+        throw new Error(statData.errorMessage || "RunningHub task failed");
       } else {
         addLog(`[RunningHubRefVideo v2] \u4EFB\u52A1\u8FD0\u884C\u4E2D (${status || "QUEUED"})...`);
       }
       attempts++;
       if (attempts > 300) {
-        throw new Error("RunningHub \u89C6\u9891\u751F\u6210\u8D85\u65F6 (15\u5206\u949F)");
+        throw new Error("RunningHub video generation timed out (15 minutes)");
       }
     }
     addLog(`[RunningHubRefVideo] \u6B63\u5728\u4E0B\u8F7D\u751F\u6210\u7684\u6587\u4EF6...`);
@@ -51530,7 +51531,7 @@ async function generateRunningHubRefVideo({ prompt: rawPrompt, width: Xwidth, he
     };
   } catch (err) {
     const rawMessage = err instanceof Error ? err.message : String(err);
-    if (rawMessage !== "\u4EFB\u52A1\u5DF2\u53D6\u6D88") {
+    if (rawMessage !== "Task cancelled") {
       taskQueue.completeTask(taskId, false);
       recordImageGeneration("runninghub", false);
       toastr.error(`RunningHub video generation failed: ${rawMessage}`);
@@ -51571,7 +51572,7 @@ async function executeRunningHubVideoDirectTest({
     }
   };
   if (!workflowId) {
-    throw new Error("\u8BF7\u5148\u914D\u7F6E\u8BE5\u9884\u8BBE\u5BF9\u5E94\u7684 RunningHub Workflow ID");
+    throw new Error("Configure a RunningHub workflow ID for this preset first");
   }
   const settings3 = extension_settings52[extensionName] || {};
   notify("\u6B63\u5728\u4ECE Key \u6C60\u5206\u914D\u7A7A\u95F2\u4E14\u6709\u4F59\u989D\u7684 API Key...");
@@ -51600,7 +51601,7 @@ async function executeRunningHubVideoDirectTest({
       uploadedAudios,
       genSettings
     );
-    if (abortSignal?.aborted) throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+    if (abortSignal?.aborted) throw new Error("Task cancelled");
     const nodeInfoList = extractNodeInfoListFromWorkflow(workflowJson, promptObj);
     notify(`\u6B63\u5728\u5411 RunningHub \u63D0\u4EA4\u4EFB\u52A1 (Workflow ID: ${workflowId}, \u79CD\u5B50: ${seedUsed}, \u8986\u76D6\u8282\u70B9\u6570: ${nodeInfoList.length})...`);
     const payload = {
@@ -51636,7 +51637,7 @@ async function executeRunningHubVideoDirectTest({
       keyLease.setRemoteTaskId(taskId);
     }
     if (keyLease && typeof keyLease.isCancelled === "function" && keyLease.isCancelled() || abortSignal?.aborted) {
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     notify(`\u4EFB\u52A1\u5DF2\u6210\u529F\u521B\u5EFA (Task ID: ${taskId})\uFF0C\u6B63\u5728\u6392\u961F/\u751F\u6210\u4E2D...`);
     let attempts = 0;
@@ -51644,9 +51645,9 @@ async function executeRunningHubVideoDirectTest({
     let rhTaskCostTime = null;
     let rhConsumeCoins = null;
     while (true) {
-      if (abortSignal?.aborted) throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      if (abortSignal?.aborted) throw new Error("Task cancelled");
       await sleep(3e3);
-      if (abortSignal?.aborted) throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      if (abortSignal?.aborted) throw new Error("Task cancelled");
       const statData = await runningHubReadWithRetry(async () => {
         const statRes = await runningHubFetch("https://www.runninghub.ai/openapi/v2/query", {
           method: "POST",
@@ -51673,17 +51674,17 @@ async function executeRunningHubVideoDirectTest({
           const rhDetailText = rhDetailParts.length > 0 ? ` (${rhDetailParts.join(", ")})` : "";
           notify(`[RunningHubVideo v2] \u83B7\u53D6\u5230\u8F93\u51FA URL: ${outputUrl}${rhDetailText} (\u683C\u5F0F: ${mainItem.outputType || "\u672A\u77E5"}, Node: ${mainItem.nodeId})`);
         } else {
-          throw new Error("RunningHub \u4EFB\u52A1\u6210\u529F\u4F46\u672A\u8FD4\u56DE\u4EFB\u4F55\u8F93\u51FA\u6587\u4EF6");
+          throw new Error("RunningHub task completed without output files");
         }
         break;
       } else if (status === "FAILED") {
-        throw new Error(statData.errorMessage || "RunningHub \u4EFB\u52A1\u6267\u884C\u5931\u8D25");
+        throw new Error(statData.errorMessage || "RunningHub task failed");
       } else {
         attempts++;
         notify(`\u4EFB\u52A1\u8FD0\u884C\u4E2D (${status || "QUEUED"})\uFF0C\u5DF2\u8017\u65F6\u7EA6 ${attempts * 3} \u79D2...`);
       }
       if (attempts > 300) {
-        throw new Error("\u89C6\u9891\u751F\u6210\u8D85\u65F6 (\u5DF2\u7B49\u5F8515\u5206\u949F)");
+        throw new Error("Video generation timed out (15 minutes)");
       }
     }
     const fileRes = await fetch(outputUrl, { signal: abortSignal });
@@ -51836,24 +51837,24 @@ function formatComfyUIApiError(errorObj, defaultMsg = "ComfyUI \u8BF7\u6C42\u593
       for (const [nodeId, nErr] of Object.entries(nodeErrors)) {
         const nodeType = nErr.class_type || "";
         const nodeMessages = Array.isArray(nErr.errors) ? nErr.errors.map((e) => e.message || e.details).filter(Boolean).join("; ") : "";
-        parts.push(`\u8282\u70B9 #${nodeId}${nodeType ? ` (${nodeType})` : ""}: ${nodeMessages || "\u53C2\u6570\u65E0\u6548"}`);
+        parts.push(`Node #${nodeId}${nodeType ? ` (${nodeType})` : ""}: ${nodeMessages || "Invalid parameters"}`);
       }
       if (parts.length > 0) {
         nodeErrSummary = `
-\u3010\u8282\u70B9\u8BE6\u60C5\u3011${parts.join(" | ")}`;
+[Node details] ${parts.join(" | ")}`;
       }
     }
-    return `ComfyUI \u6821\u9A8C\u5931\u8D25 [${errType || "Prompt Error"}]: ${errMsg}${nodeErrSummary}`;
+    return `ComfyUI validation failed [${errType || "Prompt Error"}]: ${errMsg}${nodeErrSummary}`;
   }
   if (errorObj.messages && Array.isArray(errorObj.messages)) {
     for (const msgItem of errorObj.messages) {
       if (Array.isArray(msgItem) && msgItem[0] === "execution_error") {
         const info = msgItem[1] || {};
-        const nodeId = info.node_id ? `\u8282\u70B9 #${info.node_id}` : "";
+        const nodeId = info.node_id ? `Node #${info.node_id}` : "";
         const nodeType = info.node_type ? ` [${info.node_type}]` : "";
         const exType = info.exception_type ? ` (${info.exception_type})` : "";
         const exMsg = info.exception_message || "";
-        return `ComfyUI \u8282\u70B9\u6267\u884C\u51FA\u9519: ${nodeId}${nodeType}${exType} - ${exMsg}`.trim();
+        return `ComfyUI node execution failed: ${nodeId}${nodeType}${exType} - ${exMsg}`.trim();
       }
     }
   }
@@ -51943,7 +51944,7 @@ function parseAssetManifest2(rawPrompt) {
         manifest = JSON.parse(cleanedJson);
       } catch (secondErr) {
         console.error("[ComfyUIVideo] asset_manifest JSON \u89E3\u6790\u5931\u8D25:", firstErr, jsonBlock.jsonStr);
-        throw new Error(`asset_manifest JSON \u683C\u5F0F\u9519\u8BEF: ${firstErr.message}`);
+        throw new Error(`Invalid asset_manifest JSON: ${firstErr.message}`);
       }
     }
     const rawJsonEndInFull = afterHeaderIndex + jsonBlock.end;
@@ -51981,10 +51982,10 @@ function parseAssetManifest2(rawPrompt) {
           const usage = String(pic.usage || "").trim();
           const entityType = String(pic.entity_type || "").trim();
           const isKeyframeFlag = pic.is_keyframe === true || String(pic.is_keyframe).trim().toLowerCase() === "true";
-          const isFirstFrame = idx === 1 && (/首帧参考/i.test(entityRef) || entityRef === "\u9996\u5E27\u53C2\u8003\u56FE\u7247" || /keyframe(?:\s+completion)?/i.test(usage) || /keyframe/i.test(entityType) || isKeyframeFlag || /keyframe/i.test(entityRef));
+          const isFirstFrame = idx === 1 && (/首帧参考/i.test(entityRef) || entityRef === "First-frame reference image" || /keyframe(?:\s+completion)?/i.test(usage) || /keyframe/i.test(entityType) || isKeyframeFlag || /keyframe/i.test(entityRef));
           if (isFirstFrame) {
             isFirstFrameRef = true;
-            firstFramePicEntityRef = entityRef || "\u9996\u5E27\u53C2\u8003\u56FE\u7247";
+            firstFramePicEntityRef = entityRef || "First-frame reference image";
           }
           if (isValidMediaFileId2(pic.file_id)) {
             if (idx >= 1 && idx <= 9) {
@@ -52055,7 +52056,7 @@ async function dataToBlob2(data, defaultMime = "image/png") {
       return new Blob([bytes], { type: mime });
     }
   }
-  throw new Error("\u65E0\u6CD5\u8BC6\u522B\u7684\u6587\u4EF6\u6570\u636E\u683C\u5F0F");
+  throw new Error("Unrecognized file data format");
 }
 function createBlankPngBlob2(width = 512, height = 512, color = "#000000") {
   return new Promise((resolve) => {
@@ -52104,7 +52105,7 @@ async function uploadBlankPngToComfyUIWithCache(comfyuiUrl) {
   });
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`ComfyUI \u7A7A\u767D\u515C\u5E95\u56FE\u4E0A\u4F20\u5931\u8D25: ${errText}`);
+    throw new Error(`Failed to upload ComfyUI placeholder image: ${errText}`);
   }
   const resData = await res.json();
   const uploadedFileName = resData.name;
@@ -52170,7 +52171,7 @@ async function uploadBlankAudioToComfyUIWithCache(comfyuiUrl) {
   });
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`ComfyUI \u7A7A\u767D\u515C\u5E95\u97F3\u9891\u4E0A\u4F20\u5931\u8D25: ${errText}`);
+    throw new Error(`Failed to upload ComfyUI placeholder audio: ${errText}`);
   }
   const resData = await res.json();
   const uploadedFileName = resData.name;
@@ -52213,7 +52214,7 @@ async function uploadImageBlobToComfyUIWithCache(imageSource, cacheKey, comfyuiU
   });
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`ComfyUI \u9996\u5E27\u53C2\u8003\u56FE\u7247\u4E0A\u4F20\u5931\u8D25: ${errText}`);
+    throw new Error(`Failed to upload ComfyUI first-frame reference: ${errText}`);
   }
   const resData = await res.json();
   const uploadedFileName = resData.name;
@@ -52268,7 +52269,7 @@ async function uploadMediaToComfyUIWithCache(fileId, kind, comfyuiUrl) {
     }
   }
   if (!fileBlob) {
-    throw new Error(`\u627E\u4E0D\u5230\u672C\u5730\u5A92\u4F53\u6587\u4EF6\u6216\u5DF2\u4E22\u5931: ${fileId}`);
+    throw new Error(`Local media file is missing: ${fileId}`);
   }
   if (kind === "img") {
     try {
@@ -52291,7 +52292,7 @@ async function uploadMediaToComfyUIWithCache(fileId, kind, comfyuiUrl) {
   });
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`ComfyUI \u6587\u4EF6\u4E0A\u4F20\u5931\u8D25: ${errText}`);
+    throw new Error(`ComfyUI file upload failed: ${errText}`);
   }
   const resData = await res.json();
   const uploadedFileName = resData.name;
@@ -52345,7 +52346,7 @@ function buildComfyUIRefVideoWorkflow(rawJson, promptText, uploadedImages, uploa
     promptObj = JSON.parse(jsonStr);
   } catch (err) {
     console.error("[ComfyUIVideo] \u5DE5\u4F5C\u6D41 JSON \u89E3\u6790\u5931\u8D25:", jsonStr);
-    throw new Error("ComfyUI \u89C6\u9891\u5DE5\u4F5C\u6D41 JSON \u6784\u5EFA\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5\u6A21\u677F\u683C\u5F0F");
+    throw new Error("Failed to build ComfyUI video workflow JSON. Check the template format.");
   }
   let rawTplObj = {};
   try {
@@ -52402,7 +52403,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
   let lockAcquired = false;
   try {
     if (!url) {
-      throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 ComfyUI API \u5730\u5740");
+      throw new Error("Enter a ComfyUI API URL in settings first");
     }
     if (invalidPictures && invalidPictures.length > 0) {
       addLog(`[ComfyUIVideo] \u5FFD\u7565\u672A\u7ED1\u5B9A\u6216\u7A7A\u6587\u4EF6\u56FE\u7247\u8D44\u4EA7: ${invalidPictures.map((i) => `Picture ${i}`).join(", ")}`);
@@ -52541,7 +52542,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
       } catch (_) {
       }
       const errText = errJson ? formatComfyUIApiError(errJson) : await submitRes.text();
-      throw new Error(`ComfyUI \u63D0\u4EA4\u5931\u8D25 (${submitRes.status}): ${errText}`);
+      throw new Error(`ComfyUI submission failed (${submitRes.status}): ${errText}`);
     }
     const submitData = await submitRes.json();
     const runPromptId = submitData.prompt_id;
@@ -52564,7 +52565,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
           await interruptAll(url);
         } catch (e) {
         }
-        throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+        throw new Error("Task cancelled");
       }
       attempts++;
       if (attempts % 5 === 0) {
@@ -52579,7 +52580,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
       if (histData.hasOwnProperty(runPromptId)) {
         const promptHistory = histData[runPromptId];
         if (promptHistory.status && promptHistory.status.status_str === "error") {
-          const errMsg = formatComfyUIApiError(promptHistory.status, "ComfyUI \u4EFB\u52A1\u6267\u884C\u51FA\u9519");
+          const errMsg = formatComfyUIApiError(promptHistory.status, "ComfyUI task failed");
           addLog(`[ComfyUIVideo \u9519\u8BEF] ${errMsg}`);
           throw new Error(errMsg);
         }
@@ -52633,7 +52634,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
           outputUrl = `${url}/view?filename=${encodeURIComponent(foundFile.filename)}&subfolder=${encodeURIComponent(foundFile.subfolder)}&type=output`;
           const viewRes = await fetch(outputUrl, { signal: abortController.signal });
           if (!viewRes.ok) {
-            throw new Error(`\u83B7\u53D6\u6587\u4EF6\u5931\u8D25: ${viewRes.status}`);
+            throw new Error(`Failed to fetch file: ${viewRes.status}`);
           }
           let fileBlob = await viewRes.blob();
           isVideo = foundFile.isVideo;
@@ -52662,7 +52663,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
       const elapsed = Date.now() - startTime;
       if (elapsed > timeoutMs || attempts > Math.ceil(timeoutMs / 1e3)) {
         const minutes = Math.round(timeoutMs / 6e4);
-        throw new Error(`ComfyUI \u89C6\u9891\u751F\u6210\u8D85\u65F6\uFF08\u5DF2\u8D85\u8FC7 ${minutes} \u5206\u949F\uFF09`);
+        throw new Error(`ComfyUI video generation timed out (more than ${minutes} minutes)`);
       }
     }
     const duration = ((Date.now() - startTime) / 1e3).toFixed(1);
@@ -52678,7 +52679,7 @@ async function generateComfyUIRefVideo({ prompt: rawPrompt, width: Xwidth, heigh
       genParams: _comfy_gen_params
     };
   } catch (err) {
-    const isAborted = err.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88" || abortController.signal.aborted || !taskQueue.isTaskInQueue(taskId);
+    const isAborted = err.message === "Task cancelled" || abortController.signal.aborted || !taskQueue.isTaskInQueue(taskId);
     const rawMessage = err instanceof Error ? err.message : String(err);
     if (isAborted) {
       taskQueue.cancelTask(taskId);
@@ -52718,7 +52719,7 @@ async function executeComfyUIVideoDirectTest({
   const settings3 = extension_settings53[extensionName] || {};
   const url = (comfyuiUrl || settings3.comfyuiUrl || "http://localhost:8188").trim();
   if (!url) {
-    throw new Error("\u8BF7\u5148\u5728\u8BBE\u7F6E\u4E2D\u586B\u5199 ComfyUI API \u5730\u5740");
+    throw new Error("Enter a ComfyUI API URL in settings first");
   }
   notify("\u6B63\u5728\u5904\u7406\u6D4B\u8BD5\u63D0\u793A\u8BCD\u4E0E\u53C2\u6570...");
   let targetPrompt = prompt2 || "";
@@ -52742,7 +52743,7 @@ async function executeComfyUIVideoDirectTest({
     const objectInfo = await getComfyuiCache("objectinfo") || {};
     promptObj = processSkippedNodes(promptObj, objectInfo);
   }
-  if (abortSignal?.aborted) throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+  if (abortSignal?.aborted) throw new Error("Task cancelled");
   notify(`\u6B63\u5728\u5411 ComfyUI \u63D0\u4EA4\u6D4B\u8BD5\u4EFB\u52A1 (\u79CD\u5B50: ${seedUsed})...`);
   const clientId = "533ef3a3-39c0-4e39-9ced-37d290f371f8";
   const promptPayload = JSON.stringify({ client_id: clientId, prompt: promptObj });
@@ -52759,7 +52760,7 @@ async function executeComfyUIVideoDirectTest({
     } catch (_) {
     }
     const errText = errJson ? formatComfyUIApiError(errJson) : await submitRes.text();
-    throw new Error(`ComfyUI \u63D0\u4EA4\u5931\u8D25 (${submitRes.status}): ${errText}`);
+    throw new Error(`ComfyUI submission failed (${submitRes.status}): ${errText}`);
   }
   const submitData = await submitRes.json();
   const runPromptId = submitData.prompt_id;
@@ -52777,7 +52778,7 @@ async function executeComfyUIVideoDirectTest({
         await interruptAll(url);
       } catch (e) {
       }
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     await sleep(1e3);
     if (abortSignal?.aborted) {
@@ -52785,7 +52786,7 @@ async function executeComfyUIVideoDirectTest({
         await interruptAll(url);
       } catch (e) {
       }
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     attempts++;
     if (attempts % 5 === 0) {
@@ -52796,10 +52797,10 @@ async function executeComfyUIVideoDirectTest({
       histRes = await fetchHistory(url, runPromptId, { signal: abortSignal });
       consecutiveFetchErrors = 0;
     } catch (fetchErr) {
-      if (abortSignal?.aborted) throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      if (abortSignal?.aborted) throw new Error("Task cancelled");
       consecutiveFetchErrors++;
       if (consecutiveFetchErrors > 15) {
-        throw new Error(`\u65E0\u6CD5\u8FDE\u63A5\u5230 ComfyUI \u670D\u52A1\u6216\u8FDE\u63A5\u65AD\u5F00: ${fetchErr.message}`);
+        throw new Error(`Cannot connect to ComfyUI, or connection lost: ${fetchErr.message}`);
       }
       continue;
     }
@@ -52810,7 +52811,7 @@ async function executeComfyUIVideoDirectTest({
     if (histData && histData.hasOwnProperty(runPromptId)) {
       const promptHistory = histData[runPromptId];
       if (promptHistory.status && promptHistory.status.status_str === "error") {
-        const errMsg = formatComfyUIApiError(promptHistory.status, "ComfyUI \u4EFB\u52A1\u6267\u884C\u51FA\u9519");
+        const errMsg = formatComfyUIApiError(promptHistory.status, "ComfyUI task failed");
         throw new Error(errMsg);
       }
       const outputs = promptHistory.outputs || {};
@@ -52864,7 +52865,7 @@ async function executeComfyUIVideoDirectTest({
         outputUrl = `${url}/view?filename=${encodeURIComponent(foundFile.filename)}&subfolder=${encodeURIComponent(foundFile.subfolder)}&type=output`;
         const viewRes = await fetch(outputUrl, { signal: abortSignal });
         if (!viewRes.ok) {
-          throw new Error(`\u83B7\u53D6\u6587\u4EF6\u5931\u8D25: ${viewRes.status}`);
+          throw new Error(`Failed to fetch file: ${viewRes.status}`);
         }
         let fileBlob = await viewRes.blob();
         isVideo = foundFile.isVideo;
@@ -52893,7 +52894,7 @@ async function executeComfyUIVideoDirectTest({
       }
     }
     if (attempts > 900) {
-      throw new Error("ComfyUI \u89C6\u9891\u751F\u6210\u8D85\u65F6 (\u5DF2\u7B49\u5F8515\u5206\u949F)");
+      throw new Error("ComfyUI video generation timed out (15 minutes)");
     }
   }
 }
@@ -56962,7 +56963,7 @@ function collectError(type, message, error) {
     firstSeen: timestamp,
     lastSeen: timestamp,
     type: type || "unknown",
-    message: message || "\u672A\u77E5\u9519\u8BEF",
+    message: message || "Unknown error",
     count: 1,
     sourceScope,
     signature
@@ -57020,7 +57021,7 @@ function installGlobalErrorHandler() {
     const originalToastrError = window.toastr.error;
     window.toastr.error = function(message, title, options) {
       try {
-        collectError("toastr", title || "Toastr \u9519\u8BEF", {
+        collectError("toastr", title || "Toastr error", {
           message: String(message || ""),
           title: String(title || "")
         });
@@ -57067,7 +57068,7 @@ function clearErrors() {
 }
 async function exportErrors() {
   if (errorEntries.length === 0) {
-    return "\u6682\u65E0\u9519\u8BEF\u8BB0\u5F55\u3002";
+    return "No error records.";
   }
   const lines = [];
   const now = /* @__PURE__ */ new Date();
@@ -57111,7 +57112,7 @@ async function exportErrors() {
       lines.push(`  \u9519\u8BEF\u540D: ${entry.errorName}`);
     }
     if (entry.errorMessage) {
-      lines.push(`  \u9519\u8BEF\u8BE6\u60C5: ${entry.errorMessage}`);
+      lines.push(`  Error details: ${entry.errorMessage}`);
     }
     if (entry.source) {
       lines.push(`  \u6587\u4EF6: ${entry.source}`);
@@ -57254,7 +57255,7 @@ function loadPersonaPresetList() {
     (a, b) => a.localeCompare(b, "zh-CN", { sensitivity: "base" })
   );
   for (const presetName of sortedNames) {
-    const option = $("<option></option>").val(presetName).text(presetName);
+    const option = $("<option></option>").val(presetName).text(optionLabel(presetName));
     $select.append(option);
   }
   if (profiles.currentPresetId && profiles.presets[profiles.currentPresetId]) {
@@ -57423,7 +57424,7 @@ async function onExportPreset() {
       console.error("[PersonaPreset] \u5BFC\u51FA\u5934\u50CF\u5931\u8D25:", error);
     }
   }
-  downloadJson(exportData, `st-chatu8-\u4EBA\u8BBE-${presetId}.json`);
+  downloadJson(exportData, `st-chatu8-persona-${presetId}.json`);
   toastr.success(`Character profile \"${presetId}\" exported.`);
 }
 async function onExportAllPresets() {
@@ -57451,7 +57452,7 @@ async function onExportAllPresets() {
       }
     }
   }
-  downloadJson(exportData, "st-chatu8-\u4EBA\u8BBE-\u5168\u90E8.json");
+  downloadJson(exportData, "st-chatu8-personas-all.json");
   toastr.success(`Exported all ${Object.keys(profiles.presets).length} character profiles.`);
 }
 async function onImportPreset(event) {
@@ -57505,7 +57506,7 @@ async function onImportPreset(event) {
     const total = Object.keys(presetsToImport).length;
     toastr.success(`Imported ${total} character profiles (${newCount} added, ${updateCount} updated).`);
   } catch (e) {
-    console.error("[PersonaPreset] \u5BFC\u5165\u5931\u8D25:", e);
+    console.error("[PersonaPreset] Import failed:", e);
     toastr.error("Import failed:" + e.message);
   }
   event.target.value = "";
@@ -59876,7 +59877,7 @@ async function handlePersonaGenRequest(el = null, extraContext = "", overrideDem
     let prompt2 = buildPromptForRequestType(requestType, entryTriggerText);
     if (!prompt2 || prompt2.length === 0) {
       const typeName = generationType === "user" ? "User \u4EBA\u8BBE\u751F\u6210" : "\u4EBA\u8BBE\u751F\u6210";
-      throw new Error(`\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D"${typeName}"\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E`);
+      throw new Error(`No prompt available. Check the LLM context preset for "${typeName}".`);
     }
     const characterListText = generateCharacterListText(characterTriggerText);
     const outfitEnableListText = generateOutfitEnableListText();
@@ -59909,7 +59910,7 @@ ${extraContext}`);
     if (referenceImages && referenceImages.length > 0) {
       const userMsgIdx = findLastUserMessageIndex(prompt2);
       if (userMsgIdx >= 0) {
-        prompt2 = attachImagesToMessage8(prompt2, userMsgIdx, referenceImages, "\u53C2\u8003\u56FE\u7247");
+        prompt2 = attachImagesToMessage8(prompt2, userMsgIdx, referenceImages, "Reference image");
       }
     }
     let diagnosticText = "";
@@ -59931,12 +59932,12 @@ ${extraContext}`);
     setStatus(statusEl, "\u6B63\u5728\u8C03\u7528 LLM \u751F\u6210\u4EBA\u8BBE...");
     const llmResult = generationType === "user" ? await LLM_USER_PERSONA_GEN(prompt2, { timeoutMs: 3e5 }) : await LLM_PERSONA_GEN(prompt2, { timeoutMs: 3e5 });
     const rawOutput = llmResult.result;
-    if (!rawOutput) throw new Error("LLM \u8FD4\u56DE\u4E3A\u7A7A");
+    if (!rawOutput) throw new Error("LLM returned an empty response");
     setStatus(statusEl, "\u6B63\u5728\u89E3\u6790\u7ED3\u679C...");
     const personaData = parsePersonaGenOutput(rawOutput);
     if (!personaData) {
       console.error("[PersonaGen] \u539F\u59CB\u8F93\u51FA:", rawOutput);
-      throw new Error("\u65E0\u6CD5\u4ECE LLM \u8F93\u51FA\u4E2D\u89E3\u6790\u51FA\u6709\u6548\u7684\u4EBA\u8BBE JSON");
+      throw new Error("Could not parse valid persona JSON from the LLM output");
     }
     populatePersonaFields(personaData);
     const charName = personaData.name || personaData["\u89D2\u8272\u540D"] || personaData["\u540D\u5B57"] || "\u65B0\u89D2\u8272";
@@ -59972,14 +59973,14 @@ function LLM_PERSONA_GEN(prompt2, options = {}) {
       if (responseData.success) {
         resolve({ result: responseData.result, testMode: !!responseData.testMode });
       } else {
-        reject(new Error(responseData.result || "LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "LLM request failed"));
       }
     };
     eventSource38.on(eventNames.LLM_PERSONA_GEN_RESPONSE, handler);
     eventSource38.emit(eventNames.LLM_PERSONA_GEN_REQUEST, { prompt: prompt2, id: requestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error("\u4EBA\u8BBE\u751F\u6210 LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("Persona generation LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -60002,14 +60003,14 @@ function LLM_USER_PERSONA_GEN(prompt2, options = {}) {
       if (responseData.success) {
         resolve({ result: responseData.result, testMode: !!responseData.testMode });
       } else {
-        reject(new Error(responseData.result || "User \u4EBA\u8BBE\u751F\u6210 LLM \u8BF7\u6C42\u5931\u8D25"));
+        reject(new Error(responseData.result || "User persona LLM request failed"));
       }
     };
     eventSource38.on(eventNames.LLM_USER_PERSONA_GEN_RESPONSE, handler);
     eventSource38.emit(eventNames.LLM_USER_PERSONA_GEN_REQUEST, { prompt: prompt2, id: requestId });
     timeoutTimer = setTimeout(() => {
       cleanup();
-      reject(new Error("User \u4EBA\u8BBE\u751F\u6210 LLM \u8BF7\u6C42\u8D85\u65F6"));
+      reject(new Error("User persona LLM request timed out"));
     }, timeoutMs);
   });
 }
@@ -60420,7 +60421,7 @@ function findLastUserMessageIndex(messages) {
   }
   return -1;
 }
-function attachImagesToMessage8(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+function attachImagesToMessage8(messages, messageIndex, images, imageLabel = "Reference image") {
   if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) return messages;
   const result = [...messages];
   const targetMsg = result[messageIndex];
@@ -60715,7 +60716,7 @@ ${results.join("\n")}
 async function testKnowledgeBaseTrigger(triggerText = "") {
   const config = getKnowledgeBaseConfig();
   if (!config.enabled) {
-    throw new Error("\u8D44\u6599\u5E93\u529F\u80FD\u672A\u542F\u7528");
+    throw new Error("Reference library is disabled");
   }
   const { worldBookSelections: worldBookSelections2, worldEntrySelections: worldEntrySelections2 } = config;
   const enabledWorlds = Object.entries(worldBookSelections2).filter(([, enabled]) => enabled).map(([name]) => name);
@@ -60835,7 +60836,7 @@ function loadUserPresetList() {
     (a, b) => a.localeCompare(b, "zh-CN", { sensitivity: "base" })
   );
   for (const presetName of sortedNames) {
-    const option = $("<option></option>").val(presetName).text(presetName);
+    const option = $("<option></option>").val(presetName).text(optionLabel(presetName));
     $select.append(option);
   }
   if (profiles.currentUserPresetId && profiles.presets[profiles.currentUserPresetId]) {
@@ -61033,7 +61034,7 @@ async function onExportAllPresets2() {
       }
     }
   }
-  downloadJson2(exportData, "st-chatu8-user-\u5168\u90E8.json");
+  downloadJson2(exportData, "st-chatu8-users-all.json");
   toastr.success(`Exported all ${Object.keys(profiles.presets).length} presets.`);
 }
 async function onImportPreset2(event) {
@@ -61087,7 +61088,7 @@ async function onImportPreset2(event) {
     const total = Object.keys(presetsToImport).length;
     toastr.success(`Imported ${total} presets (${newCount} added, ${updateCount} updated).`);
   } catch (e) {
-    console.error("[UserPreset] \u5BFC\u5165\u5931\u8D25:", e);
+    console.error("[UserPreset] Import failed:", e);
     toastr.error("Import failed:" + e.message);
   }
   event.target.value = "";
@@ -62202,7 +62203,7 @@ function splitTextToSegments(text, minLen, maxLen, newlineOnly = false) {
 }
 async function requestParrotTTS(text, segIdx, requestParams) {
   const chatBase = await getChatServer();
-  if (!chatBase) throw new Error("\u65E0\u53EF\u7528\u670D\u52A1\u8282\u70B9");
+  if (!chatBase) throw new Error("No service nodes available");
   const voice = requestParams.voice || TTS_CONFIG.voice;
   const systemPrompt = TTS_CONFIG.systemPrompt;
   const temperature = requestParams.temperature || TTS_CONFIG.temperature;
@@ -62233,12 +62234,12 @@ async function requestParrotTTS(text, segIdx, requestParams) {
     });
   } catch (e) {
     clearTimeout(timeout);
-    if (e.name === "AbortError") throw new Error("TTS \u8BF7\u6C42\u8D85\u65F6(180s)");
+    if (e.name === "AbortError") throw new Error("TTS request timed out (180s)");
     throw e;
   }
   if (!resp.ok) {
     clearTimeout(timeout);
-    throw new Error(`TTS \u8BF7\u6C42\u5931\u8D25 ${resp.status}`);
+    throw new Error(`TTS request failed ${resp.status}`);
   }
   const reader = resp.body.getReader();
   const dec = new TextDecoder();
@@ -62363,7 +62364,7 @@ async function requestEdgeTTS(text, segIdx, requestParams) {
     await pingEdgeServers();
   }
   if (availableEdgeServers.length === 0) {
-    throw new Error("\u65E0\u53EF\u7528 Edge TTS \u4EE3\u7406\u670D\u52A1\u5668");
+    throw new Error("No Edge TTS proxy servers available");
   }
   const voice = requestParams.edgeVoice || EDGE_TTS_CONFIG.voice;
   const style = requestParams.edgeStyle || EDGE_TTS_CONFIG.style;
@@ -62390,12 +62391,12 @@ async function requestEdgeTTS(text, segIdx, requestParams) {
       });
       clearTimeout(timeout);
       if (!resp.ok) {
-        throw new Error(`Edge TTS \u8BF7\u6C42\u5931\u8D25 HTTP-${resp.status}`);
+        throw new Error(`Edge TTS request failed. HTTP ${resp.status}`);
       }
       const contentType = resp.headers.get("Content-Type") || "";
       if (contentType && !contentType.includes("audio")) {
         const errorText = await resp.text();
-        throw new Error(`Edge TTS \u8FD4\u56DE\u975E\u97F3\u9891: ${errorText.slice(0, 100)}`);
+        throw new Error(`Edge TTS returned non-audio data: ${errorText.slice(0, 100)}`);
       }
       const blob = await resp.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -62404,7 +62405,7 @@ async function requestEdgeTTS(text, segIdx, requestParams) {
     } catch (e) {
       clearTimeout(timeout);
       markEdgeServerFailed(server);
-      lastError = e.name === "AbortError" ? new Error(`Edge TTS \u8BF7\u6C42\u8D85\u65F6(${TIMEOUT_MS / 1e3}s) - ${server.name}`) : e;
+      lastError = e.name === "AbortError" ? new Error(`Edge TTS request timed out (${TIMEOUT_MS / 1e3}s) - ${server.name}`) : e;
       log(`\u26A0\uFE0F Edge TTS #${segIdx + 1} \u670D\u52A1\u5668 ${server.name} \u5931\u8D25: ${lastError.message}, \u5C1D\u8BD5\u4E0B\u4E00\u4E2A\u670D\u52A1\u5668...`);
       if (availableEdgeServers.length > 0) {
         continue;
@@ -62445,21 +62446,21 @@ async function requestEdgeTTS(text, segIdx, requestParams) {
       }
     }
   }
-  throw lastError || new Error("\u65E0\u53EF\u7528 Edge TTS \u4EE3\u7406\u670D\u52A1\u5668");
+  throw lastError || new Error("No Edge TTS proxy servers available");
 }
 async function fetchAudioBlob(url) {
   const resp = await fetch(url, {
     credentials: "include",
     signal: AbortSignal.timeout(TIMEOUT_MS)
   });
-  if (!resp.ok) throw new Error(`\u97F3\u9891\u8BF7\u6C42\u5931\u8D25 ${resp.status}`);
+  if (!resp.ok) throw new Error(`Audio request failed ${resp.status}`);
   const blob = await resp.blob();
   return URL.createObjectURL(blob);
 }
 async function handleTTSRequest(requestData) {
   const { id, text, segments: preSegments, voice, autoPlay = true, temperature, topP, minSegLen, maxSegLen, newlineOnly, edgeVoice, edgeStyle, edgeRate, edgePitch, edgeVolume } = requestData;
   if (!text || !text.trim()) {
-    emitResponse(id, { success: false, segIndex: 0, totalSegments: 0, status: "error", error: "\u6587\u672C\u4E3A\u7A7A" });
+    emitResponse(id, { success: false, segIndex: 0, totalSegments: 0, status: "error", error: "Text is empty" });
     return;
   }
   if (state === "active") {
@@ -62485,7 +62486,7 @@ async function handleTTSRequest(requestData) {
     const segNewlineOnly = newlineOnly !== void 0 ? newlineOnly : TTS_CONFIG.newlineOnly;
     segments = splitTextToSegments(text.trim(), segMinLen, segMaxLen, segNewlineOnly);
     if (segments.length === 0) {
-      emitResponse(id, { success: false, segIndex: 0, totalSegments: 0, status: "error", error: "\u65AD\u53E5\u540E\u65E0\u6709\u6548\u6BB5\u843D" });
+      emitResponse(id, { success: false, segIndex: 0, totalSegments: 0, status: "error", error: "No valid paragraphs after splitting text" });
       return;
     }
     log(`\u{1F4DD} \u65AD\u53E5\u5B8C\u6210: ${segments.length} \u6BB5 (min=${segMinLen}, max=${segMaxLen})`);
@@ -62534,7 +62535,7 @@ function enqueueTTSTask(text, segIdx, queueItem, sessionId, requestParams) {
         const result = currentEngine === "edge" ? await requestEdgeTTS(text, segIdx, requestParams) : await requestParrotTTS(text, segIdx, requestParams);
         if (state !== "active" || currentSessionId !== sessionId) return;
         if (!result) {
-          lastError = `\u6BB5\u843D #${segIdx + 1} TTS \u65E0\u97F3\u9891`;
+          lastError = `Paragraph #${segIdx + 1} TTS \u65E0\u97F3\u9891`;
           attempt++;
           if (attempt <= maxRetries) {
             log(`\u26A0\uFE0F ${lastError}\uFF0C${retryDelay}ms \u540E\u91CD\u8BD5 (${attempt}/${maxRetries})`);
@@ -62543,7 +62544,7 @@ function enqueueTTSTask(text, segIdx, queueItem, sessionId, requestParams) {
           }
           queueItem.status = "error";
           emitResponse(currentRequestId2, { success: false, segIndex: segIdx, totalSegments: audioQueue.length, status: "error", error: lastError });
-          log(`\u26A0\uFE0F ${lastError}\uFF08\u5DF2\u91CD\u8BD5 ${maxRetries} \u6B21\uFF09`);
+          log(`\u26A0\uFE0F ${lastError} (retried ${maxRetries} times)`);
           skipIfCurrent(segIdx);
           return;
         }
@@ -62576,13 +62577,13 @@ function enqueueTTSTask(text, segIdx, queueItem, sessionId, requestParams) {
         lastError = e.message;
         attempt++;
         if (attempt <= maxRetries) {
-          log(`\u26A0\uFE0F \u6BB5\u843D #${segIdx + 1} TTS \u5931\u8D25: ${e.message}\uFF0C${retryDelay}ms \u540E\u91CD\u8BD5 (${attempt}/${maxRetries})`);
+          log(`\u26A0\uFE0F \u6BB5\u843D #${segIdx + 1} TTS failed: ${e.message}\uFF0C${retryDelay}ms \u540E\u91CD\u8BD5 (${attempt}/${maxRetries})`);
           await new Promise((r) => setTimeout(r, retryDelay));
           continue;
         }
         queueItem.status = "error";
-        emitResponse(currentRequestId2, { success: false, segIndex: segIdx, totalSegments: audioQueue.length, status: "error", error: `\u6BB5\u843D #${segIdx + 1} TTS \u5931\u8D25: ${e.message}\uFF08\u5DF2\u91CD\u8BD5 ${maxRetries} \u6B21\uFF09` });
-        log(`\u26A0\uFE0F \u6BB5\u843D #${segIdx + 1} TTS \u5931\u8D25: ${e.message}\uFF08\u5DF2\u91CD\u8BD5 ${maxRetries} \u6B21\uFF09`);
+        emitResponse(currentRequestId2, { success: false, segIndex: segIdx, totalSegments: audioQueue.length, status: "error", error: `Paragraph #${segIdx + 1} TTS failed: ${e.message} (retried ${maxRetries} times)` });
+        log(`\u26A0\uFE0F \u6BB5\u843D #${segIdx + 1} TTS failed: ${e.message} (retried ${maxRetries} times)`);
         skipIfCurrent(segIdx);
       }
     }
@@ -62668,7 +62669,7 @@ async function playSegment(item) {
       log(`\u26A0\uFE0F \u6BB5\u843D #${item.segIdx + 1} \u64AD\u653E\u51FA\u9519`);
       item.status = "error";
       const reqId = currentRequestId2;
-      emitResponse(reqId, { success: false, segIndex: item.segIdx, totalSegments: audioQueue.length, status: "error", error: "\u64AD\u653E\u51FA\u9519" });
+      emitResponse(reqId, { success: false, segIndex: item.segIdx, totalSegments: audioQueue.length, status: "error", error: "Playback error" });
       isAudioPlaying = false;
       currentAudio = null;
       nextPlayIdx++;
@@ -62681,7 +62682,7 @@ async function playSegment(item) {
     log(`\u26A0\uFE0F \u6BB5\u843D #${item.segIdx + 1} \u64AD\u653E\u5931\u8D25: ${e.message}`);
     item.status = "error";
     const reqId = currentRequestId2;
-    emitResponse(reqId, { success: false, segIndex: item.segIdx, totalSegments: audioQueue.length, status: "error", error: `\u64AD\u653E\u5931\u8D25: ${e.message}` });
+    emitResponse(reqId, { success: false, segIndex: item.segIdx, totalSegments: audioQueue.length, status: "error", error: `Playback failed: ${e.message}` });
     isAudioPlaying = false;
     currentAudio = null;
     nextPlayIdx++;
@@ -63252,6 +63253,7 @@ function isValidASRResult(text) {
   const trimmed = text.trim();
   if (!trimmed) return false;
   const invalidPatterns = [
+    /incomplete.*response|response.*incomplete|request timed out|connection.*failed/i,
     /响应.*不完整/,
     /结构.*不完整/,
     /服务[器端].*错误/,
@@ -63425,7 +63427,7 @@ async function uploadFile(file, baseUrl) {
   const fd = new FormData();
   fd.append("files", file);
   const r = await fetch(`${baseUrl}/gradio_api/upload`, { method: "POST", body: fd });
-  if (!r.ok) throw new Error(`\u4E0A\u4F20\u5931\u8D25 ${r.status}`);
+  if (!r.ok) throw new Error(`Upload failed ${r.status}`);
   const j = await r.json();
   return Array.isArray(j) ? j[0] : j;
 }
@@ -63457,23 +63459,23 @@ async function runASR(file) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(postBody)
     });
-    if (!postResp.ok) throw new Error(`ASR \u63D0\u4EA4\u5931\u8D25 ${postResp.status}`);
+    if (!postResp.ok) throw new Error(`ASR submission failed ${postResp.status}`);
     let postJson;
     try {
       postJson = await postResp.json();
     } catch (e) {
-      throw new Error("ASR \u54CD\u5E94\u7ED3\u6784\u4E0D\u5B8C\u6574\uFF1A\u65E0\u6CD5\u89E3\u6790\u63D0\u4EA4\u54CD\u5E94 JSON");
+      throw new Error("Incomplete ASR response: could not parse submission JSON");
     }
     const { event_id } = postJson;
     if (!event_id) {
-      throw new Error("ASR \u54CD\u5E94\u7ED3\u6784\u4E0D\u5B8C\u6574\uFF1A\u7F3A\u5C11 event_id");
+      throw new Error("Incomplete ASR response: missing event_id");
     }
     log2(`\u{1F4CB} ASR \u4EFB\u52A1 ${event_id}`);
     const getResp = await fetch(`${asrBase}/gradio_api/call/asr_inference/${event_id}`);
-    if (!getResp.ok) throw new Error(`ASR \u83B7\u53D6\u7ED3\u679C\u5931\u8D25 ${getResp.status}`);
+    if (!getResp.ok) throw new Error(`Failed to fetch ASR result ${getResp.status}`);
     const text = await getResp.text();
     if (!text || !text.trim()) {
-      throw new Error("ASR \u54CD\u5E94\u7ED3\u6784\u4E0D\u5B8C\u6574\uFF1A\u8FD4\u56DE\u5185\u5BB9\u4E3A\u7A7A");
+      throw new Error("Incomplete ASR response: empty content");
     }
     let currentEventType = null;
     let foundDataLine = false;
@@ -63498,7 +63500,7 @@ async function runASR(file) {
             const errData = JSON.parse(rawPayload);
             errorMessage = typeof errData === "string" ? errData : JSON.stringify(errData);
           } catch {
-            errorMessage = rawPayload || "\u672A\u77E5\u670D\u52A1\u7AEF\u9519\u8BEF";
+            errorMessage = rawPayload || "Unknown server error";
           }
           continue;
         }
@@ -63527,12 +63529,12 @@ async function runASR(file) {
       }
     }
     if (errorMessage) {
-      throw new Error(`ASR \u670D\u52A1\u7AEF\u9519\u8BEF: ${errorMessage}`);
+      throw new Error(`ASR server error: ${errorMessage}`);
     }
     if (!foundDataLine) {
-      throw new Error("ASR \u54CD\u5E94\u7ED3\u6784\u4E0D\u5B8C\u6574\uFF1A\u672A\u627E\u5230 data: \u884C");
+      throw new Error("Incomplete ASR response: missing data: line");
     }
-    throw new Error("ASR \u54CD\u5E94\u7ED3\u6784\u4E0D\u5B8C\u6574\uFF1A\u672A\u8FD4\u56DE\u6709\u6548\u8BC6\u522B\u6587\u672C");
+    throw new Error("Incomplete ASR response: no recognized text");
   } catch (e) {
     log2("\u26A0\uFE0F ASR \u5931\u8D25: " + e.message);
     eventSource41.emit(eventNames.ASR_ERROR, {
@@ -71126,8 +71128,8 @@ function refreshRequestTypeApiSelects(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     profileNames.forEach((name) => {
-      const option = new Option(name, name);
-      option.title = name;
+      const option = new Option(optionLabel(name), name);
+      option.title = optionLabel(name);
       select.add(option);
     });
     const savedValue = settings3.llm_request_type_configs?.[type]?.api_profile;
@@ -71152,8 +71154,8 @@ function refreshRequestTypeContextSelects(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     contextNames.forEach((name) => {
-      const option = new Option(name, name);
-      option.title = name;
+      const option = new Option(optionLabel(name), name);
+      option.title = optionLabel(name);
       select.add(option);
     });
     const savedValue = settings3.llm_request_type_configs?.[type]?.context_preset;
@@ -71178,8 +71180,8 @@ function refreshWorkflowSelectors(settings3) {
     const prevValue = selectEl.value;
     selectEl.innerHTML = "";
     for (const name of presetNames) {
-      const opt = new Option(name, name);
-      opt.title = name;
+      const opt = new Option(optionLabel(name), name);
+      opt.title = optionLabel(name);
       selectEl.add(opt);
     }
     let targetId = "";
@@ -71285,8 +71287,8 @@ function refreshPromptPresetSelectors(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     for (const presetName in settings3.yushe) {
-      const option = new Option(presetName, presetName);
-      option.title = presetName;
+      const option = new Option(optionLabel(presetName), presetName);
+      option.title = optionLabel(presetName);
       select.add(option);
     }
     const savedValue = settings3[key];
@@ -71311,8 +71313,8 @@ function refreshPromptReplaceSelectors(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     for (const replaceName in settings3.prompt_replace) {
-      const option = new Option(replaceName, replaceName);
-      option.title = replaceName;
+      const option = new Option(optionLabel(replaceName), replaceName);
+      option.title = optionLabel(replaceName);
       select.add(option);
     }
     const savedValue = settings3[key];
@@ -71331,8 +71333,8 @@ function refreshRegexProfileSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const profileName in settings3.regex_profiles) {
-    const option = new Option(profileName, profileName);
-    option.title = profileName;
+    const option = new Option(optionLabel(profileName), profileName);
+    option.title = optionLabel(profileName);
     select.add(option);
   }
   if (settings3.regex_profiles[currentValue]) {
@@ -71349,8 +71351,8 @@ function refreshThemeSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const themeName in settings3.themes) {
-    const option = new Option(themeName, themeName);
-    option.title = themeName;
+    const option = new Option(optionLabel(themeName), themeName);
+    option.title = optionLabel(themeName);
     select.add(option);
   }
   if (settings3.themes[currentValue]) {
@@ -71367,8 +71369,8 @@ function refreshWorldBookSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const bookName in settings3.worldBookList) {
-    const option = new Option(bookName, bookName);
-    option.title = bookName;
+    const option = new Option(optionLabel(bookName), bookName);
+    option.title = optionLabel(bookName);
     select.add(option);
   }
   if (settings3.worldBookList[currentValue]) {
@@ -71385,8 +71387,8 @@ function refreshVibePresetSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const presetName in settings3.vibePresets) {
-    const option = new Option(presetName, presetName);
-    option.title = presetName;
+    const option = new Option(optionLabel(presetName), presetName);
+    option.title = optionLabel(presetName);
     select.add(option);
   }
   if (settings3.vibePresets[currentValue]) {
@@ -71403,8 +71405,8 @@ function refreshBananaCharacterPresetSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const presetName in settings3.bananaCharacterPresets) {
-    const option = new Option(presetName, presetName);
-    option.title = presetName;
+    const option = new Option(optionLabel(presetName), presetName);
+    option.title = optionLabel(presetName);
     select.add(option);
   }
   if (settings3.bananaCharacterPresets[currentValue]) {
@@ -71421,8 +71423,8 @@ function refreshNovelaiProfileSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const profileName in settings3.novelai_profiles) {
-    const option = new Option(profileName, profileName);
-    option.title = profileName;
+    const option = new Option(optionLabel(profileName), profileName);
+    option.title = optionLabel(profileName);
     select.add(option);
   }
   if (settings3.novelai_profiles[currentValue]) {
@@ -71439,8 +71441,8 @@ function refreshComfyuiProfileSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const profileName in settings3.comfyui_profiles) {
-    const option = new Option(profileName, profileName);
-    option.title = profileName;
+    const option = new Option(optionLabel(profileName), profileName);
+    option.title = optionLabel(profileName);
     select.add(option);
   }
   if (settings3.comfyui_profiles[currentValue]) {
@@ -71457,8 +71459,8 @@ function refreshRunninghubProfileSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const profileName in settings3.runninghub_profiles) {
-    const option = new Option(profileName, profileName);
-    option.title = profileName;
+    const option = new Option(optionLabel(profileName), profileName);
+    option.title = optionLabel(profileName);
     select.add(option);
   }
   if (settings3.runninghub_profiles[currentValue]) {
@@ -71475,8 +71477,8 @@ function refreshLlmProfileSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const profileName in settings3.llm_profiles) {
-    const option = new Option(profileName, profileName);
-    option.title = profileName;
+    const option = new Option(optionLabel(profileName), profileName);
+    option.title = optionLabel(profileName);
     select.add(option);
   }
   if (settings3.llm_profiles[currentValue]) {
@@ -71493,8 +71495,8 @@ function refreshTestContextSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const contextName in settings3.test_context_profiles) {
-    const option = new Option(contextName, contextName);
-    option.title = contextName;
+    const option = new Option(optionLabel(contextName), contextName);
+    option.title = optionLabel(contextName);
     select.add(option);
   }
   if (settings3.test_context_profiles[currentValue]) {
@@ -71511,8 +71513,8 @@ function refreshTranslationModelSelector(settings3) {
   const currentValue = select.value;
   select.innerHTML = "";
   for (const profileName in settings3.llm_profiles) {
-    const option = new Option(profileName, profileName);
-    option.title = profileName;
+    const option = new Option(optionLabel(profileName), profileName);
+    option.title = optionLabel(profileName);
     select.add(option);
   }
   if (settings3.llm_profiles[currentValue]) {
@@ -71537,7 +71539,7 @@ async function refreshSdCacheSelectors(settings3) {
       const currentValue = modelSelect2.value;
       modelSelect2.innerHTML = "";
       const modelStrs = cache.models.map(toStr);
-      modelStrs.forEach((model) => modelSelect2.add(new Option(model, model)));
+      modelStrs.forEach((model) => modelSelect2.add(new Option(optionLabel(model), model)));
       if (modelStrs.includes(currentValue)) {
         modelSelect2.value = currentValue;
       } else if (settings3.sd_cchatu_8_model && modelStrs.includes(settings3.sd_cchatu_8_model)) {
@@ -71551,7 +71553,7 @@ async function refreshSdCacheSelectors(settings3) {
       const currentValue = vaeSelect.value;
       vaeSelect.innerHTML = "";
       const vaeStrs = cache.vaes.map(toStr);
-      vaeStrs.forEach((vae) => vaeSelect.add(new Option(vae, vae)));
+      vaeStrs.forEach((vae) => vaeSelect.add(new Option(optionLabel(vae), vae)));
       if (vaeStrs.includes(currentValue)) {
         vaeSelect.value = currentValue;
       } else if (settings3.sd_cchatu_8_vae && vaeStrs.includes(settings3.sd_cchatu_8_vae)) {
@@ -71565,7 +71567,7 @@ async function refreshSdCacheSelectors(settings3) {
       const currentValue = samplerSelect.value;
       samplerSelect.innerHTML = "";
       const samplerStrs = cache.samplers.map(toStr);
-      samplerStrs.forEach((sampler) => samplerSelect.add(new Option(sampler, sampler)));
+      samplerStrs.forEach((sampler) => samplerSelect.add(new Option(optionLabel(sampler), sampler)));
       if (samplerStrs.includes(currentValue)) {
         samplerSelect.value = currentValue;
       } else if (settings3.sd_cchatu_8_samplerName && samplerStrs.includes(settings3.sd_cchatu_8_samplerName)) {
@@ -71579,7 +71581,7 @@ async function refreshSdCacheSelectors(settings3) {
       const currentValue = schedulerSelect.value;
       schedulerSelect.innerHTML = "";
       const schedulerStrs = cache.schedulers.map(toStr);
-      schedulerStrs.forEach((scheduler) => schedulerSelect.add(new Option(scheduler, scheduler)));
+      schedulerStrs.forEach((scheduler) => schedulerSelect.add(new Option(optionLabel(scheduler), scheduler)));
       if (schedulerStrs.includes(currentValue)) {
         schedulerSelect.value = currentValue;
       } else if (settings3.sd_cchatu_8_scheduler && schedulerStrs.includes(settings3.sd_cchatu_8_scheduler)) {
@@ -71593,7 +71595,7 @@ async function refreshSdCacheSelectors(settings3) {
       const currentValue = upscalerSelect.value;
       upscalerSelect.innerHTML = "";
       const upscalerStrs = cache.upscalers.map(toStr);
-      upscalerStrs.forEach((upscaler) => upscalerSelect.add(new Option(upscaler, upscaler)));
+      upscalerStrs.forEach((upscaler) => upscalerSelect.add(new Option(optionLabel(upscaler), upscaler)));
       if (upscalerStrs.includes(currentValue)) {
         upscalerSelect.value = currentValue;
       } else if (settings3.sd_cchatu_8_upscaler && upscalerStrs.includes(settings3.sd_cchatu_8_upscaler)) {
@@ -71607,7 +71609,7 @@ async function refreshSdCacheSelectors(settings3) {
       const currentValue = loraSelect.value;
       loraSelect.innerHTML = "";
       const loraStrs = cache.loras.map(toStr);
-      loraStrs.forEach((lora) => loraSelect.add(new Option(lora, lora)));
+      loraStrs.forEach((lora) => loraSelect.add(new Option(optionLabel(lora), lora)));
       if (loraStrs.includes(currentValue)) {
         loraSelect.value = currentValue;
       }
@@ -71630,8 +71632,8 @@ async function refreshComfyuiCacheSelectors(settings3) {
       cache.models.forEach((model) => {
         const text = typeof model === "object" && model !== null ? model.text || model.value || String(model) : String(model);
         const value = normalizeBackslashPath2(typeof model === "object" && model !== null ? model.value || String(model) : String(model));
-        const opt = new Option(text, value);
-        opt.title = text;
+        const opt = new Option(optionLabel(text), value);
+        opt.title = optionLabel(text);
         modelSelect2.add(opt);
       });
       const modelValues = Array.from(modelSelect2.options).map((o) => o.value);
@@ -71648,7 +71650,7 @@ async function refreshComfyuiCacheSelectors(settings3) {
       const currentValue = samplerSelect.value;
       samplerSelect.innerHTML = "";
       const samplerStrs = cache.samplers.map(toStr);
-      samplerStrs.forEach((sampler) => samplerSelect.add(new Option(sampler, sampler)));
+      samplerStrs.forEach((sampler) => samplerSelect.add(new Option(optionLabel(sampler), sampler)));
       if (samplerStrs.includes(currentValue)) {
         samplerSelect.value = currentValue;
       } else if (settings3.comfyuisamplerName && samplerStrs.includes(settings3.comfyuisamplerName)) {
@@ -71662,7 +71664,7 @@ async function refreshComfyuiCacheSelectors(settings3) {
       const currentValue = vaeSelect.value;
       vaeSelect.innerHTML = "";
       const vaeStrs = cache.vaes.map(toStr);
-      vaeStrs.forEach((vae) => vaeSelect.add(new Option(vae, vae)));
+      vaeStrs.forEach((vae) => vaeSelect.add(new Option(optionLabel(vae), vae)));
       if (vaeStrs.includes(currentValue)) {
         vaeSelect.value = currentValue;
       } else if (settings3.comfyui_vae && vaeStrs.includes(settings3.comfyui_vae)) {
@@ -71676,7 +71678,7 @@ async function refreshComfyuiCacheSelectors(settings3) {
       const currentValue = schedulerSelect.value;
       schedulerSelect.innerHTML = "";
       const schedulerStrs = cache.schedulers.map(toStr);
-      schedulerStrs.forEach((scheduler) => schedulerSelect.add(new Option(scheduler, scheduler)));
+      schedulerStrs.forEach((scheduler) => schedulerSelect.add(new Option(optionLabel(scheduler), scheduler)));
       if (schedulerStrs.includes(currentValue)) {
         schedulerSelect.value = currentValue;
       } else if (settings3.comfyui_scheduler && schedulerStrs.includes(settings3.comfyui_scheduler)) {
@@ -71690,7 +71692,7 @@ async function refreshComfyuiCacheSelectors(settings3) {
       const currentValue = clipSelect.value;
       clipSelect.innerHTML = "";
       const clipStrs = cache.clips.map(toStr);
-      clipStrs.forEach((clip) => clipSelect.add(new Option(clip, clip)));
+      clipStrs.forEach((clip) => clipSelect.add(new Option(optionLabel(clip), clip)));
       if (clipStrs.includes(currentValue)) {
         clipSelect.value = currentValue;
       } else if (settings3.comfyuiCLIPName && clipStrs.includes(settings3.comfyuiCLIPName)) {
@@ -71704,7 +71706,7 @@ async function refreshComfyuiCacheSelectors(settings3) {
       const currentValue = loraSelect.value;
       loraSelect.innerHTML = "";
       const loraStrs = cache.loras.map(toStr);
-      loraStrs.forEach((lora) => loraSelect.add(new Option(lora, lora)));
+      loraStrs.forEach((lora) => loraSelect.add(new Option(optionLabel(lora), lora)));
       if (loraStrs.includes(currentValue)) {
         loraSelect.value = currentValue;
       }
@@ -71719,7 +71721,7 @@ function refreshCharacterPresetSelectors(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     for (const name in settings3.characterPresets) {
-      select.add(new Option(name, name));
+      select.add(new Option(optionLabel(name), name));
     }
     if (settings3.characterPresets[currentValue]) {
       select.value = currentValue;
@@ -71736,7 +71738,7 @@ function refreshOutfitPresetSelectors(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     for (const name in settings3.outfitPresets) {
-      select.add(new Option(name, name));
+      select.add(new Option(optionLabel(name), name));
     }
     if (settings3.outfitPresets[currentValue]) {
       select.value = currentValue;
@@ -71752,7 +71754,7 @@ function refreshCharacterEnablePresetSelector(settings3) {
   if (select) {
     const currentValue = select.value;
     select.innerHTML = "";
-    for (const name in settings3.characterEnablePresets) select.add(new Option(name, name));
+    for (const name in settings3.characterEnablePresets) select.add(new Option(optionLabel(name), name));
     if (settings3.characterEnablePresets[currentValue]) {
       select.value = currentValue;
     } else if (settings3.character_enable_preset_id && settings3.characterEnablePresets[settings3.character_enable_preset_id]) {
@@ -71767,7 +71769,7 @@ function refreshOutfitEnablePresetSelector(settings3) {
   if (select) {
     const currentValue = select.value;
     select.innerHTML = "";
-    for (const name in settings3.outfitEnablePresets) select.add(new Option(name, name));
+    for (const name in settings3.outfitEnablePresets) select.add(new Option(optionLabel(name), name));
     if (settings3.outfitEnablePresets[currentValue]) {
       select.value = currentValue;
     } else if (settings3.outfit_enable_preset_id && settings3.outfitEnablePresets[settings3.outfit_enable_preset_id]) {
@@ -71782,7 +71784,7 @@ function refreshCharacterCommonPresetSelector(settings3) {
   if (select) {
     const currentValue = select.value;
     select.innerHTML = "";
-    for (const name in settings3.characterCommonPresets) select.add(new Option(name, name));
+    for (const name in settings3.characterCommonPresets) select.add(new Option(optionLabel(name), name));
     if (settings3.characterCommonPresets[currentValue]) {
       select.value = currentValue;
     } else if (settings3.character_common_preset_id && settings3.characterCommonPresets[settings3.character_common_preset_id]) {
@@ -71798,7 +71800,7 @@ function refreshBananaConversationPresetSelector(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     for (const name in settings3.banana.conversationPresets) {
-      select.add(new Option(name, name));
+      select.add(new Option(optionLabel(name), name));
     }
     if (settings3.banana.conversationPresets[currentValue]) {
       select.value = currentValue;
@@ -71815,7 +71817,7 @@ function refreshFabThemeSelector(settings3) {
     const currentValue = select.value;
     select.innerHTML = "";
     for (const name in settings3.fabThemes) {
-      select.add(new Option(name, name));
+      select.add(new Option(optionLabel(name), name));
     }
     if (settings3.fabThemes[currentValue]) {
       select.value = currentValue;
@@ -72079,21 +72081,21 @@ function getDetailedConfigKeys() {
 function getSpecificConfigData(key) {
   const rawSettings = extension_settings101[extensionName];
   if (!rawSettings || !(key in rawSettings)) {
-    return `[\u83B7\u53D6\u5931\u8D25] \u6240\u6709\u7684\u8BBE\u7F6E\u4E2D\u4E0D\u5B58\u5728\u952E\u540D\u4E3A: ${key} \u7684\u6570\u636E\u3002`;
+    return `[Read failed] No setting has the key: ${key} \u7684\u6570\u636E\u3002`;
   }
   const data = rawSettings[key];
   if (typeof data === "object" && data !== null) {
     try {
       return JSON.stringify(data);
     } catch (e) {
-      return `[\u83B7\u53D6\u5931\u8D25] \u8BE5\u6570\u636E\u65E0\u6CD5\u8F6C\u6362\u4E3A JSON: ${e.message}`;
+      return `[Read failed] Could not convert data to JSON: ${e.message}`;
     }
   }
   return String(data);
 }
 function checkRequiredConfigs() {
   const s = extension_settings101[extensionName];
-  if (!s) return "\u274C \u63D2\u4EF6\u914D\u7F6E\u5C1A\u672A\u521D\u59CB\u5316\u3002";
+  if (!s) return "❌ Extension settings have not been initialized.";
   const results = [];
   const mode = s.mode || "comfyui";
   results.push({
@@ -72184,7 +72186,7 @@ var init_configValidation = __esm({
 
 function resolveConfigPath(dotPath) {
   const rawSettings = extension_settings102[extensionName];
-  if (!rawSettings) return { target: null, error: "[\u9519\u8BEF] \u63D2\u4EF6\u914D\u7F6E\u5C1A\u672A\u521D\u59CB\u5316\u3002" };
+  if (!rawSettings) return { target: null, error: "[Error] Extension settings have not been initialized." };
   if (!dotPath || dotPath === "") {
     return { target: rawSettings, error: null };
   }
@@ -72204,10 +72206,10 @@ function resolveConfigPath(dotPath) {
   for (let i = 0; i < parts.length; i++) {
     const key = parts[i];
     if (current === null || current === void 0 || typeof current !== "object") {
-      return { target: null, error: `[\u9519\u8BEF] \u8DEF\u5F84 "${parts.slice(0, i).join(".")}" \u4E0D\u662F\u5BF9\u8C61\uFF0C\u65E0\u6CD5\u7EE7\u7EED\u8BBF\u95EE "${key}"\u3002` };
+      return { target: null, error: `[Error] Path "${parts.slice(0, i).join(".")}" is not an object. Cannot access "${key}"\u3002` };
     }
     if (!(key in current)) {
-      return { target: null, error: `[\u9519\u8BEF] \u5728\u8DEF\u5F84 "${parts.slice(0, i).join(".") || "\u6839"}" \u4E0B\u4E0D\u5B58\u5728\u952E "${key}"\u3002` };
+      return { target: null, error: `[Error] Path "${parts.slice(0, i).join(".") || "\u6839"}" does not contain key "${key}"\u3002` };
     }
     current = current[key];
   }
@@ -72260,7 +72262,7 @@ ${strVal.substring(0, 2e3)}
   return result;
 }
 function readConfigPath(dotPath) {
-  if (!dotPath) return "[\u9519\u8BEF] read \u64CD\u4F5C\u9700\u8981\u6307\u5B9A\u8DEF\u5F84\uFF0C\u4E0D\u80FD\u4E3A\u7A7A\u3002";
+  if (!dotPath) return "[Error] The read operation requires a nonempty path.";
   const originalPath = dotPath;
   const { target, error } = resolveConfigPath(dotPath);
   if (error) return error;
@@ -72278,27 +72280,27 @@ ${jsonStr.substring(0, 15e3)}
       return `\u8DEF\u5F84 "${originalPath}" \u7684\u5B8C\u6574\u5185\u5BB9:
 ${jsonStr}`;
     } catch (e) {
-      return `[\u9519\u8BEF] \u65E0\u6CD5\u5E8F\u5217\u5316: ${e.message}`;
+      return `[Error] Could not serialize: ${e.message}`;
     }
   }
   return `\u8DEF\u5F84 "${originalPath}" \u7684\u503C\u4E3A: ${String(target)}`;
 }
 function writeConfigPath(dotPath, newValue) {
-  if (!dotPath) return "[\u9519\u8BEF] write \u64CD\u4F5C\u9700\u8981\u6307\u5B9A\u8DEF\u5F84\u3002";
+  if (!dotPath) return "[Error] The write operation requires a path.";
   const rawSettings = extension_settings102[extensionName];
-  if (!rawSettings) return "[\u9519\u8BEF] \u63D2\u4EF6\u914D\u7F6E\u5C1A\u672A\u521D\u59CB\u5316\u3002";
+  if (!rawSettings) return "[Error] Extension settings have not been initialized.";
   const parts = dotPath.split(".");
   const lastKey = parts.pop();
   const parentPath = parts.join(".");
   const { target: parent, error } = resolveConfigPath(parentPath);
   if (error) return error;
   if (parent === null || parent === void 0 || typeof parent !== "object") {
-    return `[\u9519\u8BEF] \u7236\u8DEF\u5F84 "${parentPath || "\u6839"}" \u4E0D\u662F\u5BF9\u8C61\uFF0C\u65E0\u6CD5\u5199\u5165\u952E "${lastKey}"\u3002`;
+    return `[Error] Parent path "${parentPath || "\u6839"}" is not an object. Cannot write key "${lastKey}"\u3002`;
   }
   const isNewKey = !(lastKey in parent);
   if (isNewKey && !parentPath) {
-    return `\u274C \u5199\u5165\u5931\u8D25\uFF1A\u9876\u5C42\u914D\u7F6E\u9879 "${lastKey}" \u4E0D\u5B58\u5728\u3002
-\u8BF7\u52FF\u731C\u6D4B\u5C5E\u6027\u540D\uFF01\u8BF7\u5148\u4F7F\u7528 browse \u67E5\u770B\u5B9E\u9645\u5B58\u5728\u7684\u914D\u7F6E\u9879\uFF1A
+    return `❌ Write failed: top-level setting "${lastKey}" does not exist.
+Use browse to inspect available settings first:
 <SystemQuery>{"type": "browse", "path": ""}</SystemQuery>`;
   }
   if (isNewKey && parentPath) {
@@ -72329,9 +72331,9 @@ function writeConfigPath(dotPath, newValue) {
     }
     if (!DYNAMIC_COLLECTION_PATHS.has(normalizedParent) && !DYNAMIC_COLLECTION_PATHS.has(parentPath)) {
       const existingKeys = Object.keys(parent).join(", ");
-      return `\u274C \u5199\u5165\u5931\u8D25\uFF1A\u8DEF\u5F84 "${dotPath}" \u4E2D\u5C5E\u6027 "${lastKey}" \u4E0D\u5B58\u5728\u3002
+      return `❌ Write failed: path "${dotPath}" \u4E2D\u5C5E\u6027 "${lastKey}" \u4E0D\u5B58\u5728\u3002
 \u8BE5\u5BF9\u8C61\u5DF2\u6709\u7684\u5C5E\u6027: [${existingKeys}]
-\u8BF7\u68C0\u67E5\u5C5E\u6027\u540D\u662F\u5426\u6B63\u786E\uFF01\u4E0D\u8981\u731C\u6D4B\u5C5E\u6027\u540D\uFF0C\u8BF7\u5148\u4F7F\u7528 browse \u67E5\u770B\uFF1A
+Check the property name using browse first:
 <SystemQuery>{"type": "browse", "path": "${parentPath}"}</SystemQuery>`;
     }
   }
@@ -72405,22 +72407,22 @@ function writeConfigPath(dotPath, newValue) {
    \u65B0\u503C: ${newStr}`;
 }
 function executeUIAction(actionName) {
-  if (!actionName) return "\u274C \u672A\u6307\u5B9A\u64CD\u4F5C\u540D\u79F0\u3002";
+  if (!actionName) return "❌ Specify an operation name.";
   const action = UIActionRegistry[actionName];
   if (!action) {
     const available = Object.keys(UIActionRegistry).join(", ");
-    return `\u274C \u672A\u77E5\u64CD\u4F5C: "${actionName}"\u3002\u53EF\u7528: ${available}`;
+    return `❌ Unknown operation: "${actionName}"\u3002\u53EF\u7528: ${available}`;
   }
   try {
     const $el = $(action.selector);
     if (!$el.length) {
-      return `\u274C \u672A\u627E\u5230\u5143\u7D20 (${action.desc})\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u5BF9\u5E94\u6807\u7B7E\u9875\u3002`;
+      return `❌ Element not found (${action.desc}). Switch to the corresponding tab first.`;
     }
     $el.click();
     console.log(`[AI Config] UI\u64CD\u4F5C: ${actionName} \u2192 ${action.desc}`);
     return `\u2705 \u5DF2\u6267\u884C: ${action.desc}`;
   } catch (e) {
-    return `\u274C \u6267\u884C\u5931\u8D25: ${e.message}`;
+    return `❌ Operation failed: ${e.message}`;
   }
 }
 function getCurrentUIContext() {
@@ -72518,18 +72520,18 @@ var init_configBrowseAPI = __esm({
 // utils/configHelper/configRegexBridge.js
 function getRegexStatus() {
   if (!window.regexAIBridge) {
-    return "\u274C \u6B63\u5219\u6A21\u5757\u5C1A\u672A\u52A0\u8F7D\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Regex module is not loaded. Open the Regex tab first.";
   }
   try {
     const status = window.regexAIBridge.getStatus();
     let result = "\u{1F4CB} \u6B63\u5219\u6D4B\u8BD5\u533A\u57DF\u72B6\u6001:\n";
-    result += `- \u6D4B\u8BD5\u6A21\u5F0F: ${status.testMode ? "\u2705 \u5DF2\u5F00\u542F" : "\u274C \u672A\u5F00\u542F"}
+    result += `- \u6D4B\u8BD5\u6A21\u5F0F: ${status.testMode ? "\u2705 \u5DF2\u5F00\u542F" : "❌ Disabled"}
 `;
     result += `- \u5F53\u524D\u914D\u7F6E: ${status.currentProfile || "(\u65E0)"}
 `;
-    result += `- \u624B\u52BF\u529F\u80FD: ${status.gestureEnabled ? "\u2705 \u5DF2\u5F00\u542F" : "\u274C \u672A\u5F00\u542F"}
+    result += `- \u624B\u52BF\u529F\u80FD: ${status.gestureEnabled ? "\u2705 \u5DF2\u5F00\u542F" : "❌ Disabled"}
 `;
-    result += `- \u70B9\u51FB\u89E6\u53D1: ${status.clickTriggerEnabled ? "\u2705 \u5DF2\u5F00\u542F" : "\u274C \u672A\u5F00\u542F"}
+    result += `- \u70B9\u51FB\u89E6\u53D1: ${status.clickTriggerEnabled ? "\u2705 \u5DF2\u5F00\u542F" : "❌ Disabled"}
 `;
     result += `- \u524D\u540E\u6B63\u5219: ${status.beforeAfterRegex}
 `;
@@ -72552,43 +72554,43 @@ function getRegexStatus() {
     }
     return result;
   } catch (e) {
-    return `\u274C \u83B7\u53D6\u6B63\u5219\u72B6\u6001\u5931\u8D25: ${e.message}`;
+    return `❌ Failed to read regex status: ${e.message}`;
   }
 }
 function setRegexOriginalText2(text) {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.setOriginalText(text);
 }
 function setRegexEditors2(beforeAfter, textRegex) {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.setEditors(beforeAfter, textRegex);
 }
 function createRegexEntry(data) {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.createEntry(data);
 }
 async function triggerRegexTest2() {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return await window.regexAIBridge.triggerTest();
 }
 function setRegexTestMode2(enabled) {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.setTestMode(enabled);
 }
 function getRegexResultText2() {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.getResultText();
 }
 function setGestureEnabled2(enabled) {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.setGestureEnabled(enabled);
 }
 function setClickTriggerEnabled2(enabled) {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.setClickTriggerEnabled(enabled);
 }
 function clearAllRegexEntries2() {
-  if (!window.regexAIBridge) return "\u274C \u6B63\u5219\u6A21\u5757\u672A\u52A0\u8F7D\u3002";
+  if (!window.regexAIBridge) return "❌ Regex module is not loaded.";
   return window.regexAIBridge.clearAllEntries();
 }
 var init_configRegexBridge = __esm({
@@ -72673,7 +72675,7 @@ function getWorkflowStorage(target = "comfyui", name = "") {
 }
 function getWorkflowList(target = "comfyui") {
   const { storage, currentId, targetLabel } = getWorkflowStorage(target);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
   const names = Object.keys(storage);
   let result = `\u{1F4C2} [${targetLabel}] \u5DE5\u4F5C\u6D41\u9884\u8BBE\u5217\u8868 (\u5171 ${names.length} \u4E2A)\uFF1A
 `;
@@ -72698,27 +72700,27 @@ function getWorkflowList(target = "comfyui") {
 }
 function readWorkflow(name, target = "comfyui") {
   const { storage, targetLabel } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
   if (!(name in storage)) {
     const available = Object.keys(storage).join(", ") || "(\u65E0)";
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002\u53EF\u7528: ${available}`;
   }
   const content = storage[name];
-  if (!content) return `${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   return `\u{1F4C4} [${targetLabel}] \u5DE5\u4F5C\u6D41 "${name}" \u7684\u5B8C\u6574\u5185\u5BB9 (${content.length}\u5B57\u7B26)\uFF1A
 ${content}`;
 }
 function scanWorkflowVariables(name, target = "comfyui") {
   const { storage, targetLabel } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
   if (!(name in storage)) {
     const available = Object.keys(storage).join(", ") || "(\u65E0)";
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002\u53EF\u7528: ${available}`;
   }
   const content = storage[name];
-  if (!content) return `${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\uFF0C\u65E0\u53D8\u91CF\u3002`;
+  if (!content) return `${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty and contains no variables.`;
   const regex = /%([\u4e00-\u9fa5a-zA-Z0-9_]+)%/g;
   const found = /* @__PURE__ */ new Map();
   let match;
@@ -72811,14 +72813,14 @@ function scanWorkflowVariables(name, target = "comfyui") {
 }
 function replaceWorkflowVariable(name, variable, value, target = "comfyui") {
   const { storage, currentId, currentContentKey, targetLabel, settings: settings3 } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
-  if (!variable) return "\u274C \u8BF7\u6307\u5B9A\u53D8\u91CF\u540D\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
+  if (!variable) return "❌ Specify a variable name.";
   if (!(name in storage)) {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002`;
   }
   let content = storage[name];
-  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   const cleanVar = variable.replace(/%/g, "");
   const quotedPlaceholder = `"%${cleanVar}%"`;
   const unquotedPlaceholder = `%${cleanVar}%`;
@@ -72837,7 +72839,7 @@ function replaceWorkflowVariable(name, variable, value, target = "comfyui") {
     count = (content.match(new RegExp(unquotedPlaceholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g")) || []).length;
     content = content.replaceAll(unquotedPlaceholder, replacement);
   } else {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E2D\u672A\u627E\u5230\u53D8\u91CF %${cleanVar}%\u3002\u8BF7\u5148\u7528 workflow_variables \u786E\u8BA4\u3002`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" does not contain variable %${cleanVar}%. Check with workflow_variables first.`;
   }
   storage[name] = content;
   if (currentId === name && settings3 && currentContentKey) {
@@ -72852,13 +72854,13 @@ function replaceWorkflowVariable(name, variable, value, target = "comfyui") {
 }
 function saveWorkflow(name, content, target = "comfyui") {
   const { storage, currentId, currentContentKey, targetLabel, settings: settings3 } = getWorkflowStorage(target, name);
-  if (!storage || !settings3) return `\u274C \u63D2\u4EF6\u914D\u7F6E\u5C1A\u672A\u521D\u59CB\u5316\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
-  if (!content) return "\u274C \u8BF7\u63D0\u4F9B\u5DE5\u4F5C\u6D41\u5185\u5BB9\u3002";
+  if (!storage || !settings3) return `❌ Extension settings have not been initialized.`;
+  if (!name) return "❌ Specify a workflow name.";
+  if (!content) return "❌ Provide workflow content.";
   try {
     JSON.parse(content);
   } catch (e) {
-    return `\u274C \u5DE5\u4F5C\u6D41\u5185\u5BB9\u4E0D\u662F\u5408\u6CD5\u7684 JSON: ${e.message}`;
+    return `❌ Invalid workflow JSON: ${e.message}`;
   }
   const isNew = !(name in storage);
   storage[name] = content;
@@ -72874,19 +72876,19 @@ function saveWorkflow(name, content, target = "comfyui") {
 }
 function listWorkflowNodes(name, target = "comfyui") {
   const { storage, targetLabel } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
   if (!(name in storage)) {
     const available = Object.keys(storage).join(", ") || "(\u65E0)";
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002\u53EF\u7528: ${available}`;
   }
   const content = storage[name];
-  if (!content) return `${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   let workflow;
   try {
     workflow = JSON.parse(content);
   } catch (e) {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON parsing failed: ${e.message}`;
   }
   if (!workflow || typeof workflow !== "object") {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u683C\u5F0F\u4E0D\u6B63\u786E\u3002`;
@@ -72909,23 +72911,23 @@ function listWorkflowNodes(name, target = "comfyui") {
 }
 function readWorkflowNode(name, nodeId, target = "comfyui") {
   const { storage, targetLabel } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
-  if (!nodeId) return "\u274C \u8BF7\u6307\u5B9A\u8282\u70B9ID\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
+  if (!nodeId) return "❌ Specify a node ID.";
   if (!(name in storage)) {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002`;
   }
   const content = storage[name];
-  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   let workflow;
   try {
     workflow = JSON.parse(content);
   } catch (e) {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON parsing failed: ${e.message}`;
   }
   if (!(nodeId in workflow)) {
     const available = Object.keys(workflow).sort((a, b) => Number(a) - Number(b)).join(", ");
-    return `\u274C \u8282\u70B9 "${nodeId}" \u4E0D\u5B58\u5728\u3002\u53EF\u7528\u8282\u70B9: ${available}`;
+    return `❌ Node "${nodeId}" \u4E0D\u5B58\u5728\u3002\u53EF\u7528\u8282\u70B9: ${available}`;
   }
   const node = workflow[nodeId];
   const title = node._meta?.title || node.class_type || "(\u672A\u547D\u540D)";
@@ -72937,23 +72939,23 @@ function readWorkflowNode(name, nodeId, target = "comfyui") {
 }
 function updateWorkflowNodeInput(name, nodeId, inputKey, value, target = "comfyui") {
   const { storage, currentId, currentContentKey, targetLabel, settings: settings3 } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
-  if (!nodeId) return "\u274C \u8BF7\u6307\u5B9A\u8282\u70B9ID\u3002";
-  if (!inputKey) return "\u274C \u8BF7\u6307\u5B9A\u8F93\u5165\u53C2\u6570\u952E\u540D\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
+  if (!nodeId) return "❌ Specify a node ID.";
+  if (!inputKey) return "❌ Specify an input parameter key.";
   if (!(name in storage)) {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002`;
   }
   const content = storage[name];
-  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   let workflow;
   try {
     workflow = JSON.parse(content);
   } catch (e) {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON parsing failed: ${e.message}`;
   }
   if (!(nodeId in workflow)) {
-    return `\u274C \u8282\u70B9 "${nodeId}" \u4E0D\u5B58\u5728\u3002`;
+    return `❌ Node "${nodeId}" \u4E0D\u5B58\u5728\u3002`;
   }
   const node = workflow[nodeId];
   if (!node.inputs) {
@@ -72987,21 +72989,21 @@ function updateWorkflowNodeInput(name, nodeId, inputKey, value, target = "comfyu
 }
 function batchUpdateWorkflowNodes(name, updates, target = "comfyui") {
   const { storage, currentId, currentContentKey, targetLabel, settings: settings3 } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
   if (!Array.isArray(updates) || updates.length === 0) {
-    return "\u274C \u8BF7\u63D0\u4F9B\u6709\u6548\u7684\u66F4\u65B0\u5217\u8868\uFF08\u6570\u7EC4\u683C\u5F0F\uFF09\u3002";
+    return "❌ Provide an array of updates.";
   }
   if (!(name in storage)) {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002`;
   }
   const content = storage[name];
-  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   let workflow;
   try {
     workflow = JSON.parse(content);
   } catch (e) {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON parsing failed: ${e.message}`;
   }
   const results = [];
   let successCount = 0;
@@ -73013,7 +73015,7 @@ function batchUpdateWorkflowNodes(name, updates, target = "comfyui") {
       continue;
     }
     if (!(nodeId in workflow)) {
-      results.push(`\u274C \u8282\u70B9 "${nodeId}" \u4E0D\u5B58\u5728`);
+      results.push(`❌ Node "${nodeId}" \u4E0D\u5B58\u5728`);
       continue;
     }
     const node = workflow[nodeId];
@@ -73026,7 +73028,7 @@ function batchUpdateWorkflowNodes(name, updates, target = "comfyui") {
     const inputKeysAfter = Object.keys(node.inputs);
     const lostKeys = inputKeysBefore.filter((k) => !inputKeysAfter.includes(k));
     if (lostKeys.length > 0) {
-      warnings.push(`\u26A0\uFE0F \u8282\u70B9 [${nodeId}] \u4E22\u5931\u5B57\u6BB5: ${lostKeys.join(", ")}`);
+      warnings.push(`⚠️ Node [${nodeId}] is missing fields: ${lostKeys.join(", ")}`);
     }
     const title = node._meta?.title || node.class_type || "(\u672A\u547D\u540D)";
     results.push(`\u2705 [${nodeId}] ${title}.${inputKey}: ${JSON.stringify(oldValue)} \u2192 ${JSON.stringify(value)}`);
@@ -73053,22 +73055,22 @@ function batchUpdateWorkflowNodes(name, updates, target = "comfyui") {
 }
 function deleteWorkflowNode(name, nodeId, target = "comfyui") {
   const { storage, currentId, currentContentKey, targetLabel, settings: settings3 } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
-  if (!nodeId) return "\u274C \u8BF7\u6307\u5B9A\u8282\u70B9ID\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
+  if (!nodeId) return "❌ Specify a node ID.";
   if (!(name in storage)) {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002`;
   }
   const content = storage[name];
-  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   let workflow;
   try {
     workflow = JSON.parse(content);
   } catch (e) {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON parsing failed: ${e.message}`;
   }
   if (!(nodeId in workflow)) {
-    return `\u274C \u8282\u70B9 "${nodeId}" \u4E0D\u5B58\u5728\u3002`;
+    return `❌ Node "${nodeId}" \u4E0D\u5B58\u5728\u3002`;
   }
   const node = workflow[nodeId];
   const title = node._meta?.title || node.class_type || "(\u672A\u547D\u540D)";
@@ -73087,25 +73089,25 @@ function deleteWorkflowNode(name, nodeId, target = "comfyui") {
 }
 function addWorkflowNode(name, nodeId, nodeData, target = "comfyui") {
   const { storage, currentId, currentContentKey, targetLabel, settings: settings3 } = getWorkflowStorage(target, name);
-  if (!storage) return `\u274C \u672A\u627E\u5230 ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
-  if (!name) return "\u274C \u8BF7\u6307\u5B9A\u5DE5\u4F5C\u6D41\u540D\u79F0\u3002";
-  if (!nodeId) return "\u274C \u8BF7\u6307\u5B9A\u8282\u70B9ID\u3002";
+  if (!storage) return `❌ Not found: ${targetLabel} \u5DE5\u4F5C\u6D41\u6570\u636E\u3002`;
+  if (!name) return "❌ Specify a workflow name.";
+  if (!nodeId) return "❌ Specify a node ID.";
   if (!nodeData || typeof nodeData !== "object") {
-    return "\u274C \u8BF7\u63D0\u4F9B\u6709\u6548\u7684\u8282\u70B9\u6570\u636E\uFF08\u5BF9\u8C61\u683C\u5F0F\uFF09\u3002";
+    return "❌ Provide a valid node object.";
   }
   if (!(name in storage)) {
     return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u4E0D\u5B58\u5728\u3002`;
   }
   const content = storage[name];
-  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" \u5185\u5BB9\u4E3A\u7A7A\u3002`;
+  if (!content) return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" is empty.`;
   let workflow;
   try {
     workflow = JSON.parse(content);
   } catch (e) {
-    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `\u274C ${targetLabel} \u5DE5\u4F5C\u6D41 "${name}" JSON parsing failed: ${e.message}`;
   }
   if (nodeId in workflow) {
-    return `\u274C \u8282\u70B9 "${nodeId}" \u5DF2\u5B58\u5728\uFF0C\u8BF7\u4F7F\u7528\u5176\u4ED6ID\u6216\u5148\u5220\u9664\u73B0\u6709\u8282\u70B9\u3002`;
+    return `❌ Node "${nodeId}" \u5DF2\u5B58\u5728\uFF0C\u8BF7\u4F7F\u7528\u5176\u4ED6ID\u6216\u5148\u5220\u9664\u73B0\u6709\u8282\u70B9\u3002`;
   }
   workflow[nodeId] = nodeData;
   const newContent = JSON.stringify(workflow);
@@ -73133,20 +73135,20 @@ function analyzeWorkflow(contentOrName, target = "comfyui") {
     jsonStr = contentOrName.trim();
   }
   if (!jsonStr) {
-    return `\u274C \u672A\u80FD\u83B7\u53D6\u5230\u5DE5\u4F5C\u6D41\u5185\u5BB9\u3002\u8BF7\u786E\u8BA4\u9884\u8BBE\u540D\u79F0\u6216\u63D0\u4F9B\u5B8C\u6574\u7684 JSON \u5B57\u7B26\u4E32\u3002`;
+    return `❌ Workflow content is unavailable. Check the preset name or provide the full JSON.`;
   }
   let workflow;
   try {
     workflow = JSON.parse(jsonStr);
   } catch (e) {
-    return `\u274C \u5DE5\u4F5C\u6D41 JSON \u89E3\u6790\u5931\u8D25: ${e.message}`;
+    return `❌ Failed to parse workflow JSON: ${e.message}`;
   }
   if (!workflow || typeof workflow !== "object") {
-    return `\u274C \u5DE5\u4F5C\u6D41\u683C\u5F0F\u4E0D\u6B63\u786E\uFF0C\u4E0D\u662F\u6709\u6548\u7684\u5BF9\u8C61\u7ED3\u6784\u3002`;
+    return `❌ Workflow must be a valid object.`;
   }
   const nodeIds = Object.keys(workflow).sort((a, b) => Number(a) - Number(b));
   if (nodeIds.length === 0) {
-    return `\u274C \u5DE5\u4F5C\u6D41\u4E2D\u6CA1\u6709\u53D1\u73B0\u4EFB\u4F55\u8282\u70B9\u3002`;
+    return `❌ No nodes found in the workflow.`;
   }
   const existingPlaceholders = /* @__PURE__ */ new Set();
   const phRegex = /%([\u4e00-\u9fa5a-zA-Z0-9_]+)%/g;
@@ -73571,7 +73573,7 @@ async function requestImageGeneration(prompt2, negative_prompt = "", options = {
     const timeout = setTimeout(() => {
       eventSource42.removeListener(EventType.GENERATE_IMAGE_RESPONSE, responseHandler);
       imageGenerationQueue.delete(generationId);
-      reject(new Error("\u751F\u56FE\u8BF7\u6C42\u8D85\u65F6\uFF085\u5206\u949F\uFF09"));
+      reject(new Error("Image request timed out (5 minutes)"));
     }, 5 * 60 * 1e3);
     const responseHandler = (responseData) => {
       if (responseData.id !== generationId) return;
@@ -73581,7 +73583,7 @@ async function requestImageGeneration(prompt2, negative_prompt = "", options = {
       const record = imageGenerationQueue.get(generationId);
       if (!record) {
         console.warn("[AI Image Generation] \u672A\u627E\u5230\u751F\u56FE\u8BB0\u5F55:", generationId);
-        reject(new Error("\u672A\u627E\u5230\u751F\u56FE\u8BB0\u5F55"));
+        reject(new Error("Image generation record not found"));
         return;
       }
       if (responseData.success) {
@@ -73597,7 +73599,7 @@ async function requestImageGeneration(prompt2, negative_prompt = "", options = {
         record.status = "failed";
         record.error = responseData.error || "\u751F\u6210\u5931\u8D25";
         console.log("[AI Image Generation] \u751F\u56FE\u5931\u8D25:", record.error);
-        reject(new Error(`\u751F\u56FE\u5931\u8D25: ${record.error}`));
+        reject(new Error(`Image generation failed: ${record.error}`));
       }
     };
     eventSource42.on(EventType.GENERATE_IMAGE_RESPONSE, responseHandler);
@@ -73625,7 +73627,7 @@ async function requestImageGeneration(prompt2, negative_prompt = "", options = {
 function getImageGenerationStatus(generationId) {
   const record = imageGenerationQueue.get(generationId);
   if (!record) {
-    return `\u672A\u627E\u5230\u751F\u56FE\u8BF7\u6C42: ${generationId}`;
+    return `Image request not found: ${generationId}`;
   }
   let status = `\u751F\u56FEID: ${generationId}
 `;
@@ -73718,7 +73720,7 @@ function createTask(title, steps = []) {
 }
 function updateTask(fields = {}) {
   if (!currentTask) {
-    return "\u26A0\uFE0F \u5F53\u524D\u6CA1\u6709\u6D3B\u52A8\u4EFB\u52A1\u3002\u8BF7\u5148\u4F7F\u7528 task_create \u521B\u5EFA\u4EFB\u52A1\u3002";
+    return "⚠️ No active task. Use task_create to create one.";
   }
   if (fields.title) {
     currentTask.title = fields.title;
@@ -73735,7 +73737,7 @@ function updateStep(stepId, fields = {}) {
   }
   const step = currentTask.steps.find((s) => s.id === stepId);
   if (!step) {
-    return `\u26A0\uFE0F \u672A\u627E\u5230\u6B65\u9AA4 ${stepId}\u3002\u5F53\u524D\u6B65\u9AA4: ${currentTask.steps.map((s) => s.id).join(", ")}`;
+    return `⚠️ Step not found: ${stepId}\u3002\u5F53\u524D\u6B65\u9AA4: ${currentTask.steps.map((s) => s.id).join(", ")}`;
   }
   if (fields.status && ["pending", "in_progress", "completed", "failed", "skipped"].includes(fields.status)) {
     step.status = fields.status;
@@ -73755,7 +73757,7 @@ function updateStep(stepId, fields = {}) {
 }
 function addSteps(steps = []) {
   if (!currentTask) {
-    return "\u26A0\uFE0F \u5F53\u524D\u6CA1\u6709\u6D3B\u52A8\u4EFB\u52A1\u3002\u8BF7\u5148\u4F7F\u7528 task_create \u521B\u5EFA\u4EFB\u52A1\u3002";
+    return "⚠️ No active task. Use task_create to create one.";
   }
   const startOrder = currentTask.steps.length + 1;
   const newSteps = steps.map((title, index) => ({
@@ -74346,7 +74348,7 @@ ${result}`;
 `;
       }
       if (error.errorMessage) {
-        result += `  \u8BE6\u60C5: ${error.errorMessage}
+        result += `  Details: ${error.errorMessage}
 `;
       }
       if (error.errorName) {
@@ -76774,7 +76776,7 @@ function compressImage3(base64, quality = 0.6, maxWidth = 1920) {
       const compressed = canvas.toDataURL("image/jpeg", quality);
       resolve(compressed);
     };
-    img.onerror = () => reject(new Error("\u56FE\u7247\u538B\u7F29\u5931\u8D25"));
+    img.onerror = () => reject(new Error("Image compression failed"));
     img.src = base64;
   });
 }
@@ -76815,7 +76817,7 @@ function captureFrameViaVideo(track, jpegQuality = 0.8, compressQuality = 0.6, c
     video.playsInline = true;
     const timeout = setTimeout(() => {
       video.srcObject = null;
-      reject(new Error("video \u622A\u5E27\u8D85\u65F6"));
+      reject(new Error("Video frame extraction timed out"));
     }, 3e3);
     video.onloadedmetadata = () => {
       video.play().then(() => {
@@ -76839,7 +76841,7 @@ function captureFrameViaVideo(track, jpegQuality = 0.8, compressQuality = 0.6, c
     video.onerror = () => {
       clearTimeout(timeout);
       video.srcObject = null;
-      reject(new Error("video \u5143\u7D20\u52A0\u8F7D\u5931\u8D25"));
+      reject(new Error("Video element failed to load"));
     };
   });
 }
@@ -77904,12 +77906,12 @@ async function generateAiResponse(handleSendFn, handleRegenerateFn, boundAppendM
     notifyAiGenerating();
     await runLlmChain(activeChat, profileData, requestId, iterState, handleSendFn, handleRegenerateFn, boundAppendMessage);
   } catch (error) {
-    const errorMsg = error.message || "\u672A\u77E5\u9519\u8BEF";
+    const errorMsg = error.message || "Unknown error";
     if (currentSystemMsgContent) {
       currentSystemMsgContent.html(`<span style=\"color:red\">Request error: ${escapeHTML(errorMsg)}</span>`);
     }
     if (isConversationMode()) {
-      speakNotification(`\u8BF7\u6C42\u51FA\u9519\uFF1A${errorMsg}`);
+      speakNotification(`Request failed: ${errorMsg}`);
     }
   } finally {
     setCurrentSystemMsgElement(null);
@@ -78007,12 +78009,12 @@ async function handleSend(handleSendFn, handleRegenerateFn, boundAppendMessage, 
     notifyAiGenerating();
     await runLlmChain(currentChat, profileData, requestId, iterState, handleSendFn, handleRegenerateFn, boundAppendMessage);
   } catch (error) {
-    const errorMsg = error.message || "\u672A\u77E5\u9519\u8BEF";
+    const errorMsg = error.message || "Unknown error";
     if (currentSystemMsgContent) {
       currentSystemMsgContent.html(`<span style=\"color:red\">Request error: ${escapeHTML(errorMsg)}</span>`);
     }
     if (isConversationMode()) {
-      speakNotification(`\u8BF7\u6C42\u51FA\u9519\uFF1A${errorMsg}`);
+      speakNotification(`Request failed: ${errorMsg}`);
     }
   } finally {
     setCurrentSystemMsgElement(null);
@@ -78083,12 +78085,12 @@ async function handleEditAndRegenerate(editingIndex, newText, handleSendFn, hand
     notifyAiGenerating();
     await runLlmChain(currentChat, profileData, requestId, iterState, handleSendFn, handleRegenerateFn, boundAppendMessage);
   } catch (error) {
-    const errorMsg = error.message || "\u672A\u77E5\u9519\u8BEF";
+    const errorMsg = error.message || "Unknown error";
     if (currentSystemMsgContent) {
       currentSystemMsgContent.html(`<span style=\"color:red\">Request error: ${escapeHTML(errorMsg)}</span>`);
     }
     if (isConversationMode()) {
-      speakNotification(`\u8BF7\u6C42\u51FA\u9519\uFF1A${errorMsg}`);
+      speakNotification(`Request failed: ${errorMsg}`);
     }
   } finally {
     setCurrentSystemMsgElement(null);
@@ -78207,7 +78209,7 @@ AI\uFF1A${assistantText}`;
   const contextProfile = effectiveConfig.context || {};
   const profileData = effectiveConfig;
   if (!contextProfile.entries || !Array.isArray(contextProfile.entries)) {
-    throw new Error("\u804A\u5929\u603B\u7ED3\u9884\u8BBE\u672A\u914D\u7F6E\uFF0C\u8BF7\u5728 LLM \u8BBE\u7F6E\u4E2D\u914D\u7F6E\u300C\u804A\u5929\u603B\u7ED3\u300D\u4E0A\u4E0B\u6587\u9884\u8BBE\u3002");
+    throw new Error("Configure the Chat summary context preset in LLM settings.");
   }
   const messages = [];
   for (const entry of contextProfile.entries) {
@@ -78224,7 +78226,7 @@ AI\uFF1A${assistantText}`;
     messages.push({ role: entry.role || "system", content });
   }
   if (messages.length === 0) {
-    throw new Error("\u603B\u7ED3\u9884\u8BBE\u6761\u76EE\u5168\u90E8\u88AB\u7981\u7528\uFF0C\u65E0\u6CD5\u751F\u6210\u603B\u7ED3\u3002");
+    throw new Error("All summary preset entries are disabled. Enable an entry to generate a summary.");
   }
   updateCombinedPrompt(messages, "[\u804A\u5929\u603B\u7ED3] ");
   let fullText = "";
@@ -79475,7 +79477,7 @@ function populateQwenVoices(selectedVoice) {
   const voices = getQwenVoices();
   dom.ttsQwenVoiceSelect.empty();
   voices.forEach((v) => {
-    dom.ttsQwenVoiceSelect.append(`<option value="${v}">${v}</option>`);
+    dom.ttsQwenVoiceSelect.append(`<option value="${v}">${optionLabel(v)}</option>`);
   });
   if (selectedVoice) {
     dom.ttsQwenVoiceSelect.val(selectedVoice);
@@ -79486,7 +79488,7 @@ function populateEdgeVoices(selectedVoiceId) {
   dom.ttsEdgeVoiceSelect.empty();
   voices.forEach((v) => {
     const genderTag = v.gender === "female" ? "\u2640" : "\u2642";
-    dom.ttsEdgeVoiceSelect.append(`<option value="${v.id}">${genderTag} ${v.name}</option>`);
+    dom.ttsEdgeVoiceSelect.append(`<option value="${v.id}">${optionLabel(genderTag)} ${optionLabel(v.name)}</option>`);
   });
   if (selectedVoiceId) {
     dom.ttsEdgeVoiceSelect.val(selectedVoiceId);
@@ -79499,7 +79501,7 @@ function populateEdgeStyles(voiceId, selectedStyle) {
     dom.ttsEdgeStyleSelect.append("<option value=\"general\">General (default)</option>");
   } else {
     styles.forEach((s) => {
-      dom.ttsEdgeStyleSelect.append(`<option value="${s.id}">${s.name}</option>`);
+      dom.ttsEdgeStyleSelect.append(`<option value="${s.id}">${optionLabel(s.name)}</option>`);
     });
   }
   if (selectedStyle) {
@@ -79717,7 +79719,7 @@ function initDialogEvents() {
   } = dom;
   selectSystemPrompt.empty();
   Object.entries(systemPrompts).forEach(([key, value]) => {
-    selectSystemPrompt.append(new Option(value.name, key));
+    selectSystemPrompt.append(new Option(optionLabel(value.name), key));
   });
   makeDraggable(dialog, header, "#st-chatu8-ai-close, #st-chatu8-ai-settings-btn, #st-chatu8-ai-new-chat, #st-chatu8-ai-history-btn, #st-chatu8-ai-summary-btn");
   makeResizable(dialog);
@@ -80183,15 +80185,15 @@ function initDialogEvents() {
         } catch (_readErr) {
         }
         const formattedError = extractApiErrorMessage(response, errorBodyText);
-        throw new Error(`\u83B7\u53D6\u6A21\u578B\u5217\u8868\u5931\u8D25: ${formattedError}`);
+        throw new Error(`Failed to fetch model list: ${formattedError}`);
       }
       const data = await response.json();
       if (data.error || !data.data && !data.models && (data.detail || data.message || data.msg)) {
         if (data.error === true) {
-          throw new Error("\u9152\u9986\u540E\u7AEF\u4EE3\u7406\u8FDE\u63A5\u5931\u8D25\uFF1AAPI Key \u9519\u8BEF/\u65E0\u6548\uFF0C\u6216 API \u5730\u5740\u65E0\u6CD5\u8FDE\u63A5 (401/404)");
+          throw new Error("SillyTavern proxy connection failed. Check the API key and API URL (401/404).");
         }
         const formattedError = extractApiErrorMessage(response, data);
-        throw new Error(`\u83B7\u53D6\u6A21\u578B\u5217\u8868\u5931\u8D25: ${formattedError}`);
+        throw new Error(`Failed to fetch model list: ${formattedError}`);
       }
       let rawList = [];
       if (Array.isArray(data)) {
@@ -80212,7 +80214,7 @@ function initDialogEvents() {
       selectModel.empty();
       selectModel.append("<option value=\"\">(Fetch and select a model first)</option>");
       models.forEach((model) => {
-        selectModel.append(new Option(model.id, model.id));
+        selectModel.append(new Option(optionLabel(model.id), model.id));
       });
       if (currentlySelected && models.some((m) => m.id === currentlySelected)) {
         selectModel.val(currentlySelected);
@@ -80220,7 +80222,7 @@ function initDialogEvents() {
       }
       toastr?.success(`\u6210\u529F\u83B7\u53D6 ${models.length} \u4E2A\u6A21\u578B\u3002`);
     } catch (error) {
-      toastr?.error(error.message || `\u83B7\u53D6\u6A21\u578B\u5931\u8D25: ${error}`);
+      toastr?.error(error.message || `Failed to fetch model: ${error}`);
     } finally {
       fetchModelsBtn.html(originalHtml);
       fetchModelsBtn.prop("disabled", false);
@@ -80509,7 +80511,7 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
     toastr.error("Fixed prompt preset not found. Create or select one in extension settings.", "SD generation error");
     taskQueue.completeTask(taskId, false);
     currentTaskId4 = null;
-    throw new Error("\u56FA\u5B9A\u63D0\u793A\u8BCD\u9884\u8BBE\u672A\u914D\u7F6E");
+    throw new Error("No fixed prompt preset configured");
   }
   const _sd_preset = extension_settings58[extensionName].yushe[_sd_yushe_id];
   let prompt2 = await zhengmian(
@@ -80548,8 +80550,8 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
         headers: getRequestHeaders(window.token)
       });
       if (!readmodel.ok) {
-        addLog(`\u83B7\u53D6\u6A21\u578B\u5931\u8D25: ${readmodel.status} ${readmodel.statusText}`);
-        throw new Error(`\u83B7\u53D6\u6A21\u578B\u5931\u8D25: ${readmodel.status} ${readmodel.statusText}`);
+        addLog(`Failed to fetch model: ${readmodel.status} ${readmodel.statusText}`);
+        throw new Error(`Failed to fetch model: ${readmodel.status} ${readmodel.statusText}`);
       }
       let cmodel = await readmodel.text();
       let cleanCmodel = cmodel.trim();
@@ -80571,8 +80573,8 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
           headers: getRequestHeaders(window.token)
         });
         if (!response.ok) {
-          addLog(`\u5207\u6362\u6A21\u578B\u5931\u8D25: ${response.status} ${response.statusText}`);
-          throw new Error(`\u5207\u6362\u6A21\u578B\u5931\u8D25: ${response.status} ${response.statusText}`);
+          addLog(`Failed to switch model: ${response.status} ${response.statusText}`);
+          throw new Error(`Failed to switch model: ${response.status} ${response.statusText}`);
         }
         toastr.info(`Model set to ${extension_settingss.sd_cchatu_8_model}`);
       }
@@ -80587,7 +80589,7 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
     addLog(`\u83B7\u53D6\u6216\u8005\u5207\u6362\u6A21\u578B\u5931\u8D25: ${error.message}\u3002\u8BF7\u68C0\u67E5sdwebui\u662F\u5426\u6B63\u5E38\u542F\u52A8\uFF0C\u5E76\u68C0\u67E5\u6A21\u578B\u662F\u5426\u6B63\u786E\u3002`);
     taskQueue.completeTask(taskId, false);
     currentTaskId4 = null;
-    throw new Error(`\u83B7\u53D6\u6216\u8005\u5207\u6362\u6A21\u578B\u5931\u8D25\uFF0C\u8BF7\u68C0\u67E5sdwebui\u662F\u5426\u6B63\u5E38\u542F\u52A8\uFF0C\u5E76\u68C0\u67E5\u6A21\u578B\u662F\u5426\u6B63\u786E\u3002`);
+    throw new Error(`Failed to fetch or switch model. Check that SD WebUI is running and the model is valid.`);
   }
   let seed = -1;
   const seedSetting = extension_settingss.sd_cseed;
@@ -80679,8 +80681,8 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
   console.log("payload", payload);
   try {
     if (!taskQueue.isTaskInQueue(taskId)) {
-      addLog("\u4EFB\u52A1\u5DF2\u88AB\u7528\u6237\u53D6\u6D88\u3002");
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      addLog("Task cancelled by user.");
+      throw new Error("Task cancelled");
     }
     if (extension_settingss.client === "jiuguan") {
       payload.url = url;
@@ -80695,7 +80697,7 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
         const errorText = await result.text();
         addLog(`\u9152\u9986 \u8FD4\u56DE\u9519\u8BEF\u3002\u72B6\u6001\u7801: ${result.status}\u3002\u54CD\u5E94\u5185\u5BB9: ${errorText}`);
         console.log("\u54CD\u5E94\u5185\u5BB9:", errorText);
-        throw new Error(`\u8BF7\u6C42\u5931\u8D25,\u72B6\u6001\u7801: ${result.status}, \u8BE6\u60C5: ${errorText}`);
+        throw new Error(`Request failed. HTTP status: ${result.status}, details: ${errorText}`);
       }
       const data = await result.text();
       let base64Image = "";
@@ -80729,11 +80731,11 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
         const errorText = await response.text();
         addLog(`SD API \u8FD4\u56DE\u9519\u8BEF\u3002\u72B6\u6001\u7801: ${response.status}\u3002\u54CD\u5E94\u5185\u5BB9: ${errorText}`);
         console.log("\u54CD\u5E94\u5185\u5BB9:", errorText);
-        throw new Error(`\u8BF7\u6C42\u5931\u8D25,\u72B6\u6001\u7801: ${response.status}, \u8BE6\u60C5: ${errorText}`);
+        throw new Error(`Request failed. HTTP status: ${response.status}, details: ${errorText}`);
       }
       const r = await response.json();
       if (!r.images || r.images.length === 0) {
-        throw new Error("API\u54CD\u5E94\u4E2D\u672A\u627E\u5230\u56FE\u50CF\u6570\u636E\u3002");
+        throw new Error("API response contains no image data.");
       }
       const base64Image = r.images[0];
       let imageUrl = "data:image/png;base64," + base64Image;
@@ -80750,7 +80752,7 @@ async function generateSDImage({ prompt: link, width: Xwidth, height: Xheight, c
       return { image: imageUrl, change: change_ || "", genParams: _sd_gen_params };
     }
   } catch (error) {
-    if (error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88") {
+    if (error.message === "Task cancelled") {
     } else {
       taskQueue.completeTask(taskId, false);
     }
@@ -80935,7 +80937,7 @@ function getQueueBaseUrl() {
 async function joinQueue(keyHash, userId, taskId) {
   const baseUrl = getQueueBaseUrl();
   if (!baseUrl) {
-    throw new Error("\u4E91\u7AEF\u961F\u5217\u670D\u52A1\u5730\u5740\u672A\u914D\u7F6E");
+    throw new Error("Cloud queue service URL is not configured");
   }
   addLog(`[\u961F\u5217] \u6B63\u5728\u52A0\u5165\u961F\u5217... (taskId: ${taskId.substring(0, 8)}...)`);
   const greeting = (extension_settings59[extensionName].cloudQueueGreeting || "").substring(0, 15);
@@ -80946,7 +80948,7 @@ async function joinQueue(keyHash, userId, taskId) {
   });
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`\u52A0\u5165\u961F\u5217\u5931\u8D25: ${response.status} - ${error}`);
+    throw new Error(`Failed to join queue: ${response.status} - ${error}`);
   }
   const result = await response.json();
   addLog(`[\u961F\u5217] \u5DF2\u52A0\u5165\u961F\u5217\uFF0C\u4F4D\u7F6E: ${result.position + 1}/${result.queue_size || "?"}`);
@@ -80955,12 +80957,12 @@ async function joinQueue(keyHash, userId, taskId) {
 async function checkMyTurn(keyHash, userId, taskId) {
   const baseUrl = getQueueBaseUrl();
   if (!baseUrl) {
-    throw new Error("\u4E91\u7AEF\u961F\u5217\u670D\u52A1\u5730\u5740\u672A\u914D\u7F6E");
+    throw new Error("Cloud queue service URL is not configured");
   }
   const response = await fetch(`${baseUrl}/my-turn?key_hash=${encodeURIComponent(keyHash)}&user_id=${encodeURIComponent(userId)}&task_id=${encodeURIComponent(taskId)}`);
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`\u68C0\u67E5\u961F\u5217\u72B6\u6001\u5931\u8D25: ${response.status} - ${error}`);
+    throw new Error(`Failed to check queue status: ${response.status} - ${error}`);
   }
   return await response.json();
 }
@@ -81023,12 +81025,12 @@ async function waitForTurn(keyHash, userId, taskId, taskQueue2, options = {}) {
     if (signal && signal.aborted) {
       addLog(`[\u961F\u5217] \u68C0\u6D4B\u5230\u4EFB\u52A1\u4E2D\u6B62\u4FE1\u53F7\uFF0C\u9000\u51FA\u961F\u5217`);
       await leaveQueue(keyHash, userId, taskId, null);
-      throw signal.reason || new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw signal.reason || new Error("Task cancelled");
     }
     if (taskQueue2 && !taskQueue2.isTaskInQueue(taskId)) {
       addLog(`[\u961F\u5217] \u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88\uFF0C\u9000\u51FA\u961F\u5217`);
       await leaveQueue(keyHash, userId, taskId, null);
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     const elapsed = Date.now() - queueStartTime;
     if (elapsed > queueTimeoutMs) {
@@ -81036,7 +81038,7 @@ async function waitForTurn(keyHash, userId, taskId, taskQueue2, options = {}) {
       addLog(`[\u961F\u5217] \u274C \u4E91\u7AEF\u6392\u961F\u7B49\u5F85\u8D85\u65F6\uFF08\u5DF2\u7B49\u5F85 ${Math.round(elapsed / 1e3)} \u79D2 / \u4E0A\u9650 ${timeoutSec} \u79D2\uFF09\uFF0C\u81EA\u52A8\u9000\u51FA\u961F\u5217`);
       toastr.error(`Cloud queue timed out after ${timeoutSec} seconds; left automatically`, "Queue timeout");
       await leaveQueue(keyHash, userId, taskId, null);
-      throw new Error(`\u4E91\u7AEF\u6392\u961F\u7B49\u5F85\u8D85\u65F6\uFF08\u5DF2\u8D85\u8FC7 ${timeoutSec} \u79D2\uFF0C\u524D\u65B9\u7B49\u5F85\u4EBA\u6570\u8FC7\u591A\uFF09`);
+      throw new Error(`Cloud queue wait timed out (more than ${timeoutSec} seconds; too many tasks ahead)`);
     }
     await sleep2(POLL_INTERVAL);
     try {
@@ -81061,7 +81063,7 @@ async function waitForTurn(keyHash, userId, taskId, taskQueue2, options = {}) {
       }
       addLog(logMsg);
     } catch (error) {
-      if (error.message?.includes("\u8D85\u65F6") || error.message?.includes("\u5DF2\u53D6\u6D88")) {
+      if (/超时|timeout|timed out/i.test(error.message || "") || /已取消|cancelled|canceled/i.test(error.message || "")) {
         throw error;
       }
       retryCount++;
@@ -81069,7 +81071,7 @@ async function waitForTurn(keyHash, userId, taskId, taskQueue2, options = {}) {
       if (retryCount >= MAX_POLL_RETRIES) {
         toastr.error(`Queue service unavailable: ${error.message}`, "Queue");
         await leaveQueue(keyHash, userId, taskId, null);
-        throw new Error(`\u961F\u5217\u670D\u52A1\u4E0D\u53EF\u7528: ${error.message}`);
+        throw new Error(`Queue service unavailable: ${error.message}`);
       }
     }
   }
@@ -81197,7 +81199,7 @@ function reportProgress(onProgress, current, total, message) {
 }
 function formatVibeStorageMigrationResult(result) {
   if (result.cancelled) {
-    return "\u5DF2\u53D6\u6D88 Vibe \u9152\u9986\u5B58\u50A8\u8FC1\u79FB\u3002";
+    return "Vibe storage migration cancelled.";
   }
   const lines = [
     "Vibe \u9152\u9986\u5B58\u50A8\u8FC1\u79FB\u5B8C\u6210\u3002",
@@ -81248,7 +81250,7 @@ async function migrateVibeStorageToServer(options = {}) {
       const text = await getConfigText(vibeDataId);
       if (!text) {
         result.missing++;
-        result.errors.push({ id: vibeDataId, type: "vibeData", error: "\u672C\u5730\u672A\u627E\u5230 Vibe \u6570\u636E" });
+        result.errors.push({ id: vibeDataId, type: "vibeData", error: "No local Vibe data found" });
         continue;
       }
       await saveConfigText(text, {
@@ -81273,7 +81275,7 @@ async function migrateVibeStorageToServer(options = {}) {
       const imageData = await getConfigImage(imageId);
       if (!imageData) {
         result.missing++;
-        result.errors.push({ id: imageId, type: "image", error: "\u672C\u5730\u672A\u627E\u5230\u56FE\u7247" });
+        result.errors.push({ id: imageId, type: "image", error: "Local image not found" });
         continue;
       }
       await saveConfigImage(imageData, {
@@ -81488,7 +81490,7 @@ function showVibeGroupEditorDialog() {
       showStatus(statusDiv, `Exported group "${currentGroupId}"`, "success");
       console.log("[VibeGroup] Successfully exported group:", currentGroupId);
     } catch (error) {
-      const errorMessage = error.message || "\u672A\u77E5\u9519\u8BEF";
+      const errorMessage = error.message || "Unknown error";
       console.error("[VibeGroup] Export failed:", {
         groupId: currentGroupId,
         error: error.message,
@@ -81514,7 +81516,7 @@ function showVibeGroupEditorDialog() {
       showStatus(statusDiv, `Exported all ${groupCount} groups`, "success");
       console.log("[VibeGroup] Successfully exported all groups:", groupCount);
     } catch (error) {
-      const errorMessage = error.message || "\u672A\u77E5\u9519\u8BEF";
+      const errorMessage = error.message || "Unknown error";
       console.error("[VibeGroup] Export all failed:", {
         groupCount,
         error: error.message,
@@ -81559,11 +81561,11 @@ function showVibeGroupEditorDialog() {
           loadGroupPresetList(groupSelect);
           renderVibeSlots(slotsContainer, groupSelect, addVibeBtn);
         } else {
-          let errorMessage = "\u5BFC\u5165\u5931\u8D25";
+          let errorMessage = "Import failed";
           if (result.errors.length > 0) {
             errorMessage += ":\n\n";
             errorMessage += result.errors.map((e2) => `\u2022 ${e2}`).join("\n");
-            errorMessage += "\n\n\u8BF7\u68C0\u67E5\u6587\u4EF6\u683C\u5F0F\u662F\u5426\u6B63\u786E\u3002";
+            errorMessage += "\n\nCheck the file format.";
           }
           showStatus(statusDiv, errorMessage, "error");
           console.error("[VibeGroup] Import errors:", result.errors);
@@ -81577,14 +81579,14 @@ function showVibeGroupEditorDialog() {
           timestamp: (/* @__PURE__ */ new Date()).toISOString(),
           stack: error.stack
         });
-        const errorMessage = `\u5BFC\u5165\u5931\u8D25: ${error.message || "\u672A\u77E5\u9519\u8BEF"}\u3002
+        const errorMessage = `Import failed: ${error.message || "Unknown error"}.
 
-\u53EF\u80FD\u7684\u539F\u56E0:
-\u2022 \u6587\u4EF6\u683C\u5F0F\u4E0D\u6B63\u786E
-\u2022 \u6587\u4EF6\u5DF2\u635F\u574F
-\u2022 \u6D4F\u89C8\u5668\u5B58\u50A8\u7A7A\u95F4\u4E0D\u8DB3
+Possible causes:
+• Invalid file format
+• Damaged file
+• Browser storage is full
 
-\u8BF7\u68C0\u67E5\u63A7\u5236\u53F0\u4EE5\u83B7\u53D6\u8BE6\u7EC6\u4FE1\u606F\u3002`;
+Check the console for details.`;
         showStatus(statusDiv, errorMessage, "error");
       } finally {
         document.body.removeChild(fileInput);
@@ -81613,7 +81615,7 @@ function loadGroupPresetList(selectElement) {
   groupNames.forEach((groupName) => {
     const option = document.createElement("option");
     option.value = groupName;
-    option.textContent = groupName;
+    option.textContent = optionLabel(groupName);
     if (groupName === currentGroupId) {
       option.selected = true;
     }
@@ -82004,7 +82006,7 @@ function createCoverDataUrl(file) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("\u56FE\u7247\u89E3\u7801\u5931\u8D25"));
+      reject(new Error("Image decoding failed"));
     };
     img.src = url;
   });
@@ -82106,16 +82108,16 @@ async function updateVibeSlot(slotsContainer, slotIndex, vibeRef, groupSelect, a
       });
     }
   } catch (error) {
-    let errorMessage = "Vibe \u6570\u636E\u52A0\u8F7D\u5931\u8D25";
+    let errorMessage = "Failed to load Vibe data";
     let errorType = error.name || "Error";
     if (error.name === "QuotaExceededError" || error.message.includes("quota")) {
-      errorMessage = "\u5B58\u50A8\u7A7A\u95F4\u5DF2\u6EE1";
+      errorMessage = "Storage is full";
       errorType = "QuotaExceededError";
     } else if (error.name === "NotFoundError") {
-      errorMessage = "Vibe \u6570\u636E\u672A\u627E\u5230";
+      errorMessage = "Vibe data not found";
       errorType = "NotFoundError";
     } else if (error.name === "InvalidStateError") {
-      errorMessage = "\u6570\u636E\u5E93\u72B6\u6001\u65E0\u6548";
+      errorMessage = "Invalid database state";
       errorType = "InvalidStateError";
     }
     previewDiv.innerHTML = `
@@ -82640,7 +82642,7 @@ function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => resolve(e.target.result);
-    reader.onerror = (e) => reject(new Error("\u6587\u4EF6\u8BFB\u53D6\u5931\u8D25"));
+    reader.onerror = (e) => reject(new Error("Failed to read file"));
     reader.readAsText(file);
   });
 }
@@ -82658,7 +82660,7 @@ async function importVibeGroup(jsonString) {
     try {
       importData = JSON.parse(jsonString);
     } catch (parseError) {
-      result.errors.push("\u6587\u4EF6\u683C\u5F0F\u9519\u8BEF: \u65E0\u6548\u7684 JSON \u683C\u5F0F");
+      result.errors.push("Invalid file format: invalid JSON");
       console.error("[VibeGroup] JSON parse error:", {
         error: parseError.message,
         errorName: parseError.name,
@@ -82670,15 +82672,15 @@ async function importVibeGroup(jsonString) {
       return result;
     }
     if (!importData || typeof importData !== "object") {
-      result.errors.push("\u6587\u4EF6\u683C\u5F0F\u9519\u8BEF: \u6839\u5BF9\u8C61\u65E0\u6548");
+      result.errors.push("Invalid file format: invalid root object");
       return result;
     }
     if (!importData.groups || typeof importData.groups !== "object") {
-      result.errors.push("\u6587\u4EF6\u683C\u5F0F\u9519\u8BEF: \u7F3A\u5C11 groups \u5B57\u6BB5");
+      result.errors.push("Invalid file format: missing groups");
       return result;
     }
     if (!importData.vibeData || typeof importData.vibeData !== "object") {
-      result.errors.push("\u6587\u4EF6\u683C\u5F0F\u9519\u8BEF: \u7F3A\u5C11 vibeData \u5B57\u6BB5");
+      result.errors.push("Invalid file format: missing vibeData");
       return result;
     }
     const settings3 = extension_settings61[extensionName];
@@ -82688,7 +82690,7 @@ async function importVibeGroup(jsonString) {
     for (const vibeId of vibeDataKeys) {
       const vibeData = importData.vibeData[vibeId];
       if (!validateVibeData(vibeData)) {
-        result.warnings.push(`\u8DF3\u8FC7\u65E0\u6548\u7684 Vibe \u6570\u636E: ${vibeId}`);
+        result.warnings.push(`Skipped invalid Vibe data: ${vibeId}`);
         console.warn("[VibeGroup] Invalid Vibe data structure:", vibeId, vibeData);
         continue;
       }
@@ -82719,7 +82721,7 @@ async function importVibeGroup(jsonString) {
         savedVibeIds.add(savedVibeId);
         console.log("[VibeGroup] Imported Vibe data:", savedVibeId);
       } catch (error) {
-        result.warnings.push(`\u4FDD\u5B58 Vibe \u6570\u636E\u5931\u8D25: ${vibeId}`);
+        result.warnings.push(`Failed to save Vibe data: ${vibeId}`);
         let errorType = error.name || "Error";
         if (error.name === "QuotaExceededError" || error.message.includes("quota")) {
           errorType = "QuotaExceededError";
@@ -82741,12 +82743,12 @@ async function importVibeGroup(jsonString) {
     for (const groupName of groupNames) {
       const groupData = importData.groups[groupName];
       if (!groupData || typeof groupData !== "object") {
-        result.warnings.push(`\u8DF3\u8FC7\u65E0\u6548\u7684\u7EC4: ${groupName}`);
+        result.warnings.push(`Skipped invalid group: ${groupName}`);
         console.warn("[VibeGroup] Invalid group data:", groupName, groupData);
         continue;
       }
       if (!Array.isArray(groupData.vibes)) {
-        result.warnings.push(`\u8DF3\u8FC7\u65E0\u6548\u7684\u7EC4 (vibes \u4E0D\u662F\u6570\u7EC4): ${groupName}`);
+        result.warnings.push(`Skipped invalid group (vibes must be an array): ${groupName}`);
         console.warn("[VibeGroup] Group vibes is not an array:", groupName, groupData);
         continue;
       }
@@ -82757,24 +82759,24 @@ async function importVibeGroup(jsonString) {
         counter++;
       }
       if (finalGroupName !== groupName) {
-        result.warnings.push(`\u7EC4\u540D\u51B2\u7A81: "${groupName}" \u5DF2\u91CD\u547D\u540D\u4E3A "${finalGroupName}"`);
+        result.warnings.push(`Duplicate group name: "${groupName}" renamed to "${finalGroupName}"`);
         console.log("[VibeGroup] Group name conflict, renamed:", groupName, "->", finalGroupName);
       }
       const validVibes = [];
       for (const vibeRef of groupData.vibes) {
         if (!vibeRef || typeof vibeRef !== "object" || !vibeRef.vibeDataId) {
-          result.warnings.push(`\u8DF3\u8FC7\u65E0\u6548\u7684 Vibe \u5F15\u7528 (\u7EC4: ${finalGroupName})`);
+          result.warnings.push(`Skipped invalid Vibe reference (group: ${finalGroupName})`);
           continue;
         }
         if (!savedVibeIds.has(vibeRef.vibeDataId)) {
-          result.warnings.push(`\u8DF3\u8FC7\u7F3A\u5931\u7684 Vibe: ${vibeRef.vibeDataId} (\u7EC4: ${finalGroupName})`);
+          result.warnings.push(`Skipped missing Vibe: ${vibeRef.vibeDataId} (group: ${finalGroupName})`);
           console.warn("[VibeGroup] Vibe data not successfully imported:", vibeRef.vibeDataId);
           continue;
         }
         let strength = parseFloat(vibeRef.strength);
         if (isNaN(strength) || strength < 0 || strength > 1) {
           strength = 0.6;
-          result.warnings.push(`Vibe \u5F3A\u5EA6\u503C\u65E0\u6548\uFF0C\u5DF2\u91CD\u7F6E\u4E3A\u9ED8\u8BA4\u503C (\u7EC4: ${finalGroupName})`);
+          result.warnings.push(`Invalid Vibe strength; reset to default (group: ${finalGroupName})`);
         }
         validVibes.push({
           vibeDataId: vibeRef.vibeDataId,
@@ -82811,7 +82813,7 @@ async function importVibeGroup(jsonString) {
       for (const presetName of presetNames) {
         const presetData = importData.vibePresets[presetName];
         if (!presetData || typeof presetData !== "object") {
-          result.warnings.push(`\u8DF3\u8FC7\u65E0\u6548\u7684\u9884\u8BBE: ${presetName}`);
+          result.warnings.push(`Skipped invalid preset: ${presetName}`);
           console.warn("[VibeGroup] Invalid preset data:", presetName, presetData);
           continue;
         }
@@ -82822,7 +82824,7 @@ async function importVibeGroup(jsonString) {
           counter++;
         }
         if (finalPresetName !== presetName) {
-          result.warnings.push(`\u9884\u8BBE\u540D\u51B2\u7A81: "${presetName}" \u5DF2\u91CD\u547D\u540D\u4E3A "${finalPresetName}"`);
+          result.warnings.push(`Duplicate preset name: "${presetName}" renamed to "${finalPresetName}"`);
           console.log("[VibeGroup] Preset name conflict, renamed:", presetName, "->", finalPresetName);
         }
         const mappedImageId = presetData.imageId ? imageIdMap[presetData.imageId] || presetData.imageId : null;
@@ -82842,7 +82844,7 @@ async function importVibeGroup(jsonString) {
     result.success = true;
     return result;
   } catch (error) {
-    result.errors.push(`\u5BFC\u5165\u5931\u8D25: ${error.message}`);
+    result.errors.push(`Import failed: ${error.message}`);
     console.error("[VibeGroup] Import error:", {
       error: error.message,
       errorName: error.name,
@@ -83089,13 +83091,13 @@ async function saveVibeDataWithDuplicatePrevention(vibeData) {
       console.error("[VibeGroup]   1. Delete unused Vibe presets");
       console.error("[VibeGroup]   2. Clear browser cache");
       console.error("[VibeGroup]   3. Export important data before clearing");
-      throw new Error("\u5B58\u50A8\u7A7A\u95F4\u5DF2\u6EE1\u3002\u8BF7\u5220\u9664\u672A\u4F7F\u7528\u7684 Vibe \u6216\u6E05\u9664\u7F13\u5B58\u3002");
+      throw new Error("Storage is full. Delete unused Vibes or clear the cache.");
     } else if (error.name === "InvalidStateError") {
       console.error("[VibeGroup] Database is in an invalid state");
-      throw new Error("\u6570\u636E\u5E93\u72B6\u6001\u65E0\u6548\u3002\u8BF7\u5237\u65B0\u9875\u9762\u540E\u91CD\u8BD5\u3002");
+      throw new Error("Invalid database state. Refresh the page and try again.");
     } else if (error.name === "DataError") {
       console.error("[VibeGroup] Data format error");
-      throw new Error("\u6570\u636E\u683C\u5F0F\u9519\u8BEF\u3002\u8BF7\u68C0\u67E5 Vibe \u6570\u636E\u662F\u5426\u6709\u6548\u3002");
+      throw new Error("Invalid data format. Check the Vibe data.");
     }
     throw error;
   }
@@ -83222,11 +83224,11 @@ async function showVibeGroupVisualSelector(onSelect) {
           console.warn("[VibeGroupVisualSelector] Cover image not found in database:", preset.coverImageId);
         }
       } catch (error) {
-        let errorMessage = "\u52A0\u8F7D\u5931\u8D25";
+        let errorMessage = "Loading failed";
         if (error.name === "QuotaExceededError" || error.message.includes("quota")) {
-          errorMessage = "\u5B58\u50A8\u5DF2\u6EE1";
+          errorMessage = "Storage is full";
         } else if (error.name === "NotFoundError") {
-          errorMessage = "\u56FE\u50CF\u672A\u627E\u5230";
+          errorMessage = "Image not found";
         } else if (error.name === "InvalidStateError") {
           errorMessage = "Database error";
         }
@@ -83903,7 +83905,7 @@ function getNovelAICandidateUrls(endpointPath = "/ai/generate-image") {
   }
   const otherSite = normalizeNovelAIOtherSiteUrl(settings3.novelaiOtherSite);
   if (!otherSite) {
-    throw new Error("\u5DF2\u9009\u62E9\u7B2C\u4E09\u65B9\u7AD9\u70B9\uFF0C\u4F46\u672A\u586B\u5199 novelaiOtherSite \u5730\u5740");
+    throw new Error("Enter the third-party URL in novelaiOtherSite");
   }
   const normalizedPath = endpointPath.startsWith("/") ? endpointPath : `/${endpointPath}`;
   const pathKeyword = endpointPath.replace(/^\/+/, "");
@@ -84002,30 +84004,30 @@ async function postNovelAIWithFallback({
     }
   }
   if (lastResponse) {
-    let userFriendlyError = `\u8BF7\u6C42\u5931\u8D25, \u72B6\u6001\u7801: ${lastResponse.status}, \u9519\u8BEF\u4FE1\u606F: ${lastErrorText}`;
+    let userFriendlyError = `Request failed. HTTP status: ${lastResponse.status}, error: ${lastErrorText}`;
     switch (lastResponse.status) {
       case 400:
         try {
           const errorJson = JSON.parse(lastErrorText);
           if (errorJson.message) {
-            userFriendlyError = `\u8BF7\u6C42\u9A8C\u8BC1\u5931\u8D25: ${errorJson.message}`;
+            userFriendlyError = `Request validation failed: ${errorJson.message}`;
             addLog(`${logPrefix} [API \u9519\u8BEF] 400 \u9A8C\u8BC1\u9519\u8BEF: ${errorJson.message}`);
           }
         } catch (e) {
-          userFriendlyError = `\u8BF7\u6C42\u9A8C\u8BC1\u5931\u8D25: ${lastErrorText}`;
+          userFriendlyError = `Request validation failed: ${lastErrorText}`;
           addLog(`${logPrefix} [API \u9519\u8BEF] 400 \u9A8C\u8BC1\u9519\u8BEF: ${lastErrorText}`);
         }
         break;
       case 401:
-        userFriendlyError = "API Key \u9519\u8BEF\u6216\u65E0\u6548\uFF0C\u8BF7\u68C0\u67E5 API Key\u3002";
+        userFriendlyError = "Invalid API key. Check the key.";
         addLog(`${logPrefix} [API \u9519\u8BEF] 401 \u8BA4\u8BC1\u5931\u8D25`);
         break;
       case 402:
-        userFriendlyError = "\u9700\u8981\u6709\u6548\u8BA2\u9605\u624D\u80FD\u8BBF\u95EE\u6B64\u7AEF\u70B9\u3002";
+        userFriendlyError = "An active subscription is required to access this endpoint.";
         addLog(`${logPrefix} [API \u9519\u8BEF] 402 \u9700\u8981\u8BA2\u9605`);
         break;
       case 405:
-        userFriendlyError = `\u7AEF\u70B9\u4E0D\u652F\u6301 POST \u8BF7\u6C42 (405 Method Not Allowed): ${lastErrorText || "\u8BF7\u68C0\u67E5\u662F\u5426\u4E3A\u5355 Endpoint \u6216\u8DEF\u5F84\u914D\u7F6E"}`;
+        userFriendlyError = `Endpoint does not support POST (405 Method Not Allowed): ${lastErrorText || "Check the endpoint and path configuration"}`;
         addLog(`${logPrefix} [API \u9519\u8BEF] 405 Method Not Allowed`);
         break;
       default:
@@ -84036,7 +84038,7 @@ async function postNovelAIWithFallback({
   if (lastError) {
     throw lastError;
   }
-  throw new Error(`${logPrefix} \u672A\u80FD\u83B7\u5F97\u6709\u6548\u54CD\u5E94`);
+  throw new Error(`${logPrefix} received no valid response`);
 }
 var activeAbortControllers = /* @__PURE__ */ new Map();
 var currentCloudQueueInfo = null;
@@ -84091,7 +84093,7 @@ function validateNovelAIPayload(payload, modelVersion) {
   const requiredFields = ["width", "height", "scale", "sampler", "steps", "seed"];
   for (const field of requiredFields) {
     if (payload[field] === void 0 || payload[field] === null) {
-      throw new Error(`\u7F3A\u5C11\u5FC5\u9700\u5B57\u6BB5: ${field}`);
+      throw new Error(`Missing required field: ${field}`);
     }
   }
   if (modelVersion === "nai-diffusion-3") {
@@ -84100,7 +84102,7 @@ function validateNovelAIPayload(payload, modelVersion) {
     const refStrengthLen = payload.reference_strength_multiple?.length || 0;
     if (refImageLen > 0 || refInfoLen > 0 || refStrengthLen > 0) {
       if (refImageLen !== refInfoLen || refImageLen !== refStrengthLen) {
-        const errorMsg = `NAI3 \u53C2\u8003\u6570\u7EC4\u957F\u5EA6\u4E0D\u5339\u914D: reference_image_multiple=${refImageLen}, reference_information_extracted_multiple=${refInfoLen}, reference_strength_multiple=${refStrengthLen}`;
+        const errorMsg = `NAI3 reference array length mismatch: reference_image_multiple=${refImageLen}, reference_information_extracted_multiple=${refInfoLen}, reference_strength_multiple=${refStrengthLen}`;
         addLog(`[\u9A8C\u8BC1\u9519\u8BEF] ${errorMsg}`);
         throw new Error(errorMsg);
       }
@@ -84111,7 +84113,7 @@ function validateNovelAIPayload(payload, modelVersion) {
     const refCachedLen = payload.reference_image_multiple_cached?.length || 0;
     const refStrengthLen = payload.reference_strength_multiple?.length || 0;
     if (refCachedLen > 0 && refCachedLen !== refStrengthLen) {
-      const errorMsg = `NAI4/4.5 Vibe Transfer \u6570\u7EC4\u957F\u5EA6\u4E0D\u5339\u914D: reference_image_multiple_cached=${refCachedLen}, reference_strength_multiple=${refStrengthLen}`;
+      const errorMsg = `NAI4/4.5 Vibe Transfer array length mismatch: reference_image_multiple_cached=${refCachedLen}, reference_strength_multiple=${refStrengthLen}`;
       addLog(`[\u9A8C\u8BC1\u9519\u8BEF] ${errorMsg}`);
       throw new Error(errorMsg);
     }
@@ -84127,7 +84129,7 @@ function validateNovelAIPayload(payload, modelVersion) {
     const directorSecondary = payload.director_reference_secondary_strength_values?.length || 0;
     if (directorImages > 0) {
       if (directorImages !== directorDescriptions || directorImages !== directorInfo || directorImages !== directorStrength || directorImages !== directorSecondary) {
-        const errorMsg = `\u89D2\u8272\u53C2\u8003\u6570\u7EC4\u957F\u5EA6\u4E0D\u5339\u914D: images=${directorImages}, descriptions=${directorDescriptions}, info=${directorInfo}, strength=${directorStrength}, secondary=${directorSecondary}`;
+        const errorMsg = `Character reference array length mismatch: images=${directorImages}, descriptions=${directorDescriptions}, info=${directorInfo}, strength=${directorStrength}, secondary=${directorSecondary}`;
         addLog(`[\u9A8C\u8BC1\u9519\u8BEF] ${errorMsg}`);
         throw new Error(errorMsg);
       }
@@ -84147,10 +84149,10 @@ async function applySingleVibeTransfer(preset_data) {
     const infoExtracted = Number(extension_settings62[extensionName].InformationExtracted);
     const strength = Number(extension_settings62[extensionName].ReferenceStrength);
     if (isNaN(infoExtracted) || infoExtracted < 0 || infoExtracted > 1) {
-      throw new Error(`InformationExtracted \u503C\u65E0\u6548: ${infoExtracted}\u3002\u5FC5\u987B\u5728 0 \u5230 1 \u4E4B\u95F4\u3002`);
+      throw new Error(`Invalid InformationExtracted value: ${infoExtracted}. Must be between 0 and 1.`);
     }
     if (isNaN(strength) || strength < 0 || strength > 1) {
-      throw new Error(`ReferenceStrength \u503C\u65E0\u6548: ${strength}\u3002\u5FC5\u987B\u5728 0 \u5230 1 \u4E4B\u95F4\u3002`);
+      throw new Error(`Invalid ReferenceStrength value: ${strength}. Must be between 0 and 1.`);
     }
     preset_data.reference_image_multiple.push(processedImage);
     preset_data.reference_information_extracted_multiple.push(infoExtracted);
@@ -84228,7 +84230,7 @@ async function applyVibeGroupTransfer(preset_data) {
   const currentGroup = vibeGroups[currentGroupId];
   const vibes = currentGroup.vibes || [];
   if (vibes.length === 0) {
-    const errorMsg = "\u9519\u8BEF: \u9009\u4E2D\u7684 Vibe \u7EC4\u4E3A\u7A7A\u3002\u8BF7\u6DFB\u52A0\u81F3\u5C11\u4E00\u4E2A Vibe \u5230\u7EC4\u4E2D\u3002";
+    const errorMsg = "The selected Vibe group is empty. Add at least one Vibe.";
     console.warn("[VibeGroup] Selected Vibe group is empty");
     addLog(`[VibeGroup] ${errorMsg}`);
     toastr.error(errorMsg, "Vibe group transfer");
@@ -84371,7 +84373,7 @@ async function applyCharacterReferenceGroup(preset_data) {
   const currentGroup = charRefGroups[currentGroupId];
   const references = currentGroup.references || [];
   if (references.length === 0) {
-    const errorMsg = "\u9519\u8BEF: \u9009\u4E2D\u7684\u89D2\u8272\u53C2\u8003\u7EC4\u4E3A\u7A7A\u3002\u8BF7\u6DFB\u52A0\u81F3\u5C11\u4E00\u4E2A\u89D2\u8272\u53C2\u8003\u5230\u7EC4\u4E2D\u3002";
+    const errorMsg = "The selected character reference group is empty. Add at least one reference.";
     console.warn("[CharRef] Selected character reference group is empty");
     addLog(`[CharRef] ${errorMsg}`);
     toastr.error(errorMsg, "Character reference");
@@ -84451,17 +84453,17 @@ async function unzipFile(inputData) {
   addLog("\u5F00\u59CB\u89E3\u538B ZIP \u6587\u4EF6...");
   const JSZipConstructor = window.stChatu8JSZip || window.JSZip;
   if (!JSZipConstructor || typeof JSZipConstructor.loadAsync !== "function") {
-    const error = new Error("JSZip \u4E0D\u53EF\u7528\uFF0C\u65E0\u6CD5\u89E3\u538B ZIP \u6587\u4EF6");
+    const error = new Error("JSZip is unavailable. Cannot extract ZIP files.");
     addLog(error.message);
     throw error;
   }
   if (!inputData) {
-    throw new Error("\u89E3\u538B\u6570\u636E\u4E3A\u7A7A");
+    throw new Error("Archive data is empty");
   }
   const extractJsonError = (parsed, rawText) => {
     const errMsg = parsed.message || parsed.error?.message || parsed.error || parsed.msg || parsed.detail;
     if (errMsg) {
-      return `API\u8FD4\u56DE\u9519\u8BEF: ${typeof errMsg === "object" ? JSON.stringify(errMsg) : errMsg}`;
+      return `API returned an error: ${typeof errMsg === "object" ? JSON.stringify(errMsg) : errMsg}`;
     }
     return `API\u54CD\u5E94\u4E3AJSON\u4F46\u672A\u5305\u542B\u6709\u6548\u56FE\u50CF\u6570\u636E: ${rawText.substring(0, 150)}`;
   };
@@ -84487,7 +84489,7 @@ async function unzipFile(inputData) {
     if (trimmed.startsWith("<") && (trimmed.toLowerCase().includes("<!doctype") || trimmed.toLowerCase().includes("<html"))) {
       const titleMatch = trimmed.match(/<title[^>]*>([^<]+)<\/title>/i);
       const htmlHint = titleMatch ? ` (\u9875\u9762\u6807\u9898: ${titleMatch[1].trim()})` : "";
-      throw new Error(`\u7AEF\u70B9\u8FD4\u56DE\u4E86HTML\u9875\u9762\u800C\u975E\u56FE\u50CF\u538B\u7F29\u5305${htmlHint}\u3002\u8BF7\u68C0\u67E5API\u5730\u5740\u3001\u53CD\u4EE3\u8DEF\u7531\u914D\u7F6E\u6216\u662F\u5426\u88AB\u62E6\u622A\u3002`);
+      throw new Error(`Endpoint returned an HTML page instead of an image archive${htmlHint}. Check the API URL, reverse proxy routing and access restrictions.`);
     }
   }
   let uint8Data = null;
@@ -84531,17 +84533,17 @@ async function unzipFile(inputData) {
           throw new Error(extractJsonError(parsed, text));
         } catch (parseErr) {
           if (parseErr.message.startsWith("API")) throw parseErr;
-          throw new Error(`API\u8FD4\u56DE\u65E0\u6548JSON\u54CD\u5E94: ${text.substring(0, 150)}`);
+          throw new Error(`API returned invalid JSON: ${text.substring(0, 150)}`);
         }
       } else if (text.startsWith("<") && (text.toLowerCase().includes("<!doctype") || text.toLowerCase().includes("<html"))) {
         const titleMatch = text.match(/<title[^>]*>([^<]+)<\/title>/i);
         const htmlHint = titleMatch ? ` (\u9875\u9762\u6807\u9898: ${titleMatch[1].trim()})` : "";
-        throw new Error(`\u7AEF\u70B9\u8FD4\u56DE\u4E86HTML\u9875\u9762\u800C\u975E\u56FE\u50CF\u538B\u7F29\u5305${htmlHint}\u3002\u8BF7\u68C0\u67E5API\u5730\u5740\u3001\u53CD\u4EE3\u8DEF\u7531\u914D\u7F6E\u6216\u662F\u5426\u88AB\u62E6\u622A\u3002`);
+        throw new Error(`Endpoint returned an HTML page instead of an image archive${htmlHint}. Check the API URL, reverse proxy routing and access restrictions.`);
       } else if (text.length > 0 && text.length < 500) {
-        throw new Error(`\u7AEF\u70B9\u8FD4\u56DE\u975E\u9884\u671F\u6587\u672C\u54CD\u5E94: ${text}`);
+        throw new Error(`Endpoint returned unexpected text: ${text}`);
       } else {
         const magicBytes = Array.from(uint8Data.slice(0, 4)).map((b) => "0x" + b.toString(16).padStart(2, "0")).join(", ");
-        throw new Error(`\u8FD4\u56DE\u6570\u636E\u4E0D\u662F\u5408\u6CD5\u7684ZIP\u538B\u7F29\u5305\u6216\u56FE\u7247\u6587\u4EF6\uFF08\u524D\u5BFC\u5B57\u8282: [${magicBytes}]\uFF09`);
+        throw new Error(`Response is not a valid ZIP archive or image (leading bytes: [${magicBytes}]\uFF09`);
       }
     }
   } else if (typeof inputData === "string") {
@@ -84550,7 +84552,7 @@ async function unzipFile(inputData) {
       zipPayload = trimmed;
       loadOptions = { base64: true };
     } else {
-      throw new Error(`\u8F93\u5165\u5B57\u7B26\u4E32\u4E0D\u662F\u5408\u6CD5\u7684 Base64 ZIP \u6570\u636E`);
+      throw new Error(`Input is not valid Base64 ZIP data`);
     }
   }
   try {
@@ -84578,7 +84580,7 @@ async function unzipFile(inputData) {
       }
     }
     if (!targetEntry) {
-      throw new Error("ZIP \u538B\u7F29\u5305\u4E2D\u672A\u627E\u5230\u4EFB\u4F55\u6709\u6548\u56FE\u50CF\u6587\u4EF6");
+      throw new Error("ZIP archive contains no valid images");
     }
     addLog(`\u5728 ZIP \u4E2D\u63D0\u53D6\u6587\u4EF6: ${targetEntry.name}`);
     const base64String = await targetEntry.async("base64");
@@ -84611,7 +84613,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
       try {
-        abortController.abort(new Error(`NovelAI \u8BF7\u6C42\u8D85\u65F6\uFF08${sec}\u79D2\u65E0\u54CD\u5E94\uFF09`));
+        abortController.abort(new Error(`NovelAI request timed out (${sec} seconds without a response)`));
       } catch (_) {
       }
     }, sec * 1e3);
@@ -84669,7 +84671,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
     toastr.error("Enter a NovelAI API key");
     taskQueue.completeTask(taskId, false);
     currentTaskId = null;
-    throw new Error("\u8BF7\u586B\u5199 NovelAI API Key");
+    throw new Error("Enter your NovelAI API key");
   }
   const promptForGeneration = change && change.trim() !== "" ? change : link;
   addLog(`\u7528\u4E8E\u751F\u6210\u7684Tag: ${promptForGeneration}`);
@@ -84735,7 +84737,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
     toastr.error("Fixed prompt preset not found. Create or select one in extension settings.", "NovelAI generation error");
     taskQueue.completeTask(taskId, false);
     currentTaskId = null;
-    throw new Error("\u56FA\u5B9A\u63D0\u793A\u8BCD\u9884\u8BBE\u672A\u914D\u7F6E");
+    throw new Error("No fixed prompt preset configured");
   }
   const _nai_preset = extension_settings62[extensionName].yushe[_nai_yushe_id];
   prompt2 = await zhengmian(
@@ -85119,19 +85121,19 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
   if (extension_settings62[extensionName].novelaisite != "\u5B98\u7F51") {
     if (extension_settings62[extensionName].client == "jiuguan") {
       taskQueue.completeTask(taskId, false);
-      throw new Error("\u9152\u9986\u7AEF\u4E0D\u652F\u6301\u81EA\u5B9A\u4E49\u7AD9\u70B9\uFF01");
+      throw new Error("The SillyTavern backend does not support custom sites.");
     }
     let otherSite = normalizeNovelAIOtherSiteUrl(extension_settings62[extensionName].novelaiOtherSite);
     if (!otherSite) {
       taskQueue.completeTask(taskId, false);
-      throw new Error("\u5DF2\u9009\u62E9\u7B2C\u4E09\u65B9\u7AD9\u70B9\uFF0C\u4F46\u672A\u586B\u5199 novelaiOtherSite \u5730\u5740");
+      throw new Error("Enter the third-party URL in novelaiOtherSite");
     }
   }
   try {
     let re = "";
     if (!taskQueue.isTaskInQueue(taskId)) {
       addLog("\u6B63\u5F0F\u8BF7\u6C42\u524D\u68C0\u6D4B\u5230\u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88\u3002");
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     if (isSettingTrue3(extension_settings62[extensionName].enableCloudQueue)) {
       const keyHash = await hashKey(access_token);
@@ -85204,7 +85206,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
       const result = await fetch("/api/novelai/generate-image", { method: "POST", headers: getRequestHeaders(window.token), body: JSON.stringify(tavernAIPayload), signal: abortController.signal });
       if (!result.ok) {
         const text = await result.text();
-        throw new Error(`\u751F\u6210\u56FE\u7247\u5931\u8D25\uFF0C\u8BE6\u60C5\u67E5\u770B\u9152\u9986\u63A7\u5236\u53F0: ${text}`);
+        throw new Error(`Image generation failed. Check the SillyTavern console: ${text}`);
       }
       let data = await result.text();
       try {
@@ -85242,7 +85244,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
       }
     }
     if (!re) {
-      throw new Error("\u672A\u80FD\u4ECEAPI\u54CD\u5E94\u4E2D\u63D0\u53D6\u56FE\u50CF\u6570\u636E\u3002");
+      throw new Error("Could not extract image data from API response.");
     }
     let imageUrl = "data:image/png;base64," + re;
     const duration = ((Date.now() - startTime) / 1e3).toFixed(1);
@@ -85260,7 +85262,7 @@ async function generateNovelAIImage({ prompt: link, width: Xwidth, height: Xheig
       const otherSite = normalizeNovelAIOtherSiteUrl(extension_settings62[extensionName].novelaiOtherSite);
       evictNovelAIUrlCache(otherSite, "/ai/generate-image");
     }
-    isTaskAborted = error.name === "AbortError" || error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88" || abortController.signal.aborted || error.message?.includes("\u8D85\u65F6");
+    isTaskAborted = error.name === "AbortError" || error.message === "Task cancelled" || abortController.signal.aborted || /超时|timeout|timed out/i.test(error.message || "");
     if (isTaskAborted) {
       addLog(`[NovelAI] \u4EFB\u52A1\u5DF2\u88AB\u7528\u6237\u53D6\u6D88\u6216\u8D85\u65F6: ${error.message}`);
     } else {
@@ -85340,7 +85342,7 @@ async function generateNovelAIInpaint({ prompt: link, width: Xwidth, height: Xhe
     if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
       try {
-        abortController.abort(new Error(`NovelAI \u5C40\u90E8\u91CD\u7ED8\u8BF7\u6C42\u8D85\u65F6\uFF08${sec}\u79D2\u65E0\u54CD\u5E94\uFF09`));
+        abortController.abort(new Error(`NovelAI inpaint request timed out (${sec} seconds without a response)`));
       } catch (_) {
       }
     }, sec * 1e3);
@@ -85366,7 +85368,7 @@ async function generateNovelAIInpaint({ prompt: link, width: Xwidth, height: Xhe
     addLog(`[NovelAI Inpaint] \u5F3A\u5EA6: ${strength}`);
     const access_token = (extension_settings62[extensionName].novelaiApi || "").trim();
     if (!access_token || access_token === "000000") {
-      throw new Error("\u8BF7\u586B\u5199 NovelAI API Key");
+      throw new Error("Enter your NovelAI API key");
     }
     const imgWidth = Number(window.novelaiInpaintWidth) || Number(Xwidth) || Number(extension_settings62[extensionName].novelai_width) || 1024;
     const imgHeight = Number(window.novelaiInpaintHeight) || Number(Xheight) || Number(extension_settings62[extensionName].novelai_height) || 1024;
@@ -85470,7 +85472,7 @@ async function generateNovelAIInpaint({ prompt: link, width: Xwidth, height: Xhe
     });
     if (!taskQueue.isTaskInQueue(taskId)) {
       addLog("[NovelAI Inpaint] \u6B63\u5F0F\u5F00\u59CB\u524D\u4EFB\u52A1\u5DF2\u88AB\u53D6\u6D88");
-      throw new Error("\u4EFB\u52A1\u5DF2\u53D6\u6D88");
+      throw new Error("Task cancelled");
     }
     if (isSettingTrue3(extension_settings62[extensionName].enableCloudQueue)) {
       const keyHash = await hashKey(access_token);
@@ -85490,7 +85492,7 @@ async function generateNovelAIInpaint({ prompt: link, width: Xwidth, height: Xhe
     }
     resetInpaintTimeout(NOVELAI_TIMEOUT_SECONDS);
     if (extension_settings62[extensionName].novelaisite != "\u5B98\u7F51" && extension_settings62[extensionName].client == "jiuguan") {
-      throw new Error("\u9152\u9986\u7AEF\u4E0D\u652F\u6301\u81EA\u5B9A\u4E49\u7AD9\u70B9\u7684\u5C40\u90E8\u91CD\u7ED8\uFF01");
+      throw new Error("The SillyTavern backend does not support inpainting on custom sites.");
     }
     const Authorization = "Bearer " + access_token;
     const { candidates, rawOtherSite } = getNovelAICandidateUrls("/ai/generate-image");
@@ -85519,7 +85521,7 @@ async function generateNovelAIInpaint({ prompt: link, width: Xwidth, height: Xhe
       workingNovelAIUrlCache.set(`${rawOtherSite}|/ai/generate-image`, response._verifiedCandidateUrl);
     }
     if (!imageBase64Result) {
-      throw new Error("\u672A\u80FD\u4ECEAPI\u54CD\u5E94\u4E2D\u63D0\u53D6\u56FE\u50CF\u6570\u636E");
+      throw new Error("Could not extract image data from API response");
     }
     let imageUrl = "data:image/png;base64," + imageBase64Result;
     addLog("[NovelAI Inpaint] \u56FE\u50CF\u5DF2\u6210\u529F\u83B7\u53D6\u5E76\u683C\u5F0F\u5316\u4E3A data URL");
@@ -85538,7 +85540,7 @@ async function generateNovelAIInpaint({ prompt: link, width: Xwidth, height: Xhe
       const otherSite = normalizeNovelAIOtherSiteUrl(extension_settings62[extensionName].novelaiOtherSite);
       evictNovelAIUrlCache(otherSite, "/ai/generate-image");
     }
-    isTaskAborted = error.name === "AbortError" || error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88" || abortController.signal.aborted || error.message?.includes("\u8D85\u65F6");
+    isTaskAborted = error.name === "AbortError" || error.message === "Task cancelled" || abortController.signal.aborted || /超时|timeout|timed out/i.test(error.message || "");
     if (isTaskAborted) {
       addLog(`[NovelAI Inpaint] \u8BF7\u6C42\u5DF2\u88AB\u7528\u6237\u53D6\u6D88\u6216\u8D85\u65F6: ${error.message}`);
     } else {
@@ -85646,7 +85648,7 @@ async function novelaigenerate(requestData) {
           addLog(`\u7F13\u5B58\u8BBE\u7F6E\u4E3A\u4E0D\u5B58\u5165\u6570\u636E\u5E93`);
         }
       } catch (dbError) {
-        const dbErrorMsg = `\u65E0\u6CD5\u5C06\u56FE\u50CF\u5B58\u5165\u7F13\u5B58\u6570\u636E\u5E93 (ID: ${id}): ${dbError.message}`;
+        const dbErrorMsg = `Could not save image to the cache database (ID: ${id}): ${dbError.message}`;
         addLog(`\u8B66\u544A: ${dbErrorMsg}`);
         console.warn("Could not save image to DB cache:", dbError);
       }
@@ -85661,7 +85663,7 @@ async function novelaigenerate(requestData) {
       });
       addLog(`\u53D1\u9001\u751F\u56FE\u6210\u529F\u54CD\u5E94 (ID: ${id})`);
     } catch (error) {
-      const isAborted = error.name === "AbortError" || error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88";
+      const isAborted = error.name === "AbortError" || error.message === "Task cancelled";
       if (isAborted) {
         addLog(`\u4EFB\u52A1\u5DF2\u53D6\u6D88 (ID: ${id})`);
         recordImageGeneration("novelai", false);
@@ -85669,7 +85671,7 @@ async function novelaigenerate(requestData) {
           id,
           success: false,
           cancelled: true,
-          error: "\u4EFB\u52A1\u5DF2\u53D6\u6D88",
+          error: "Task cancelled",
           prompt: prompt2
         });
       } else {
@@ -85706,7 +85708,7 @@ async function novelaigenerate(requestData) {
         addLog(`\u7F13\u5B58\u8BBE\u7F6E\u4E3A\u4E0D\u5B58\u5165\u6570\u636E\u5E93`);
       }
     } catch (dbError) {
-      const dbErrorMsg = `\u65E0\u6CD5\u5C06\u56FE\u50CF\u5B58\u5165\u7F13\u5B58\u6570\u636E\u5E93 (ID: ${id}): ${dbError.message}`;
+      const dbErrorMsg = `Could not save image to the cache database (ID: ${id}): ${dbError.message}`;
       addLog(`\u8B66\u544A: ${dbErrorMsg}`);
       console.warn("Could not save image to DB cache:", dbError);
     }
@@ -85721,7 +85723,7 @@ async function novelaigenerate(requestData) {
     });
     addLog(`\u53D1\u9001\u751F\u56FE\u6210\u529F\u54CD\u5E94 (ID: ${id})`);
   } catch (error) {
-    const isAborted = error.name === "AbortError" || error.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88";
+    const isAborted = error.name === "AbortError" || error.message === "Task cancelled";
     if (isAborted) {
       addLog(`\u4EFB\u52A1\u5DF2\u53D6\u6D88 (ID: ${id})`);
       recordImageGeneration("novelai", false);
@@ -85729,7 +85731,7 @@ async function novelaigenerate(requestData) {
         id,
         success: false,
         cancelled: true,
-        error: "\u4EFB\u52A1\u5DF2\u53D6\u6D88",
+        error: "Task cancelled",
         prompt: prompt2
       });
     } else {
@@ -85995,9 +85997,9 @@ async function diagnoseConfigStorage(options = {}) {
       headers: getRequestHeaders(window.token),
       body: JSON.stringify({ folder: CONFIG_FOLDER, type: 7 })
     });
-    if (!resp.ok) throw new Error(`\u5217\u8868\u8BF7\u6C42\u5931\u8D25: ${resp.status} ${resp.statusText}`);
+    if (!resp.ok) throw new Error(`List request failed: ${resp.status} ${resp.statusText}`);
     const serverFiles = await resp.json();
-    if (!Array.isArray(serverFiles)) throw new Error("\u670D\u52A1\u5668\u8FD4\u56DE\u683C\u5F0F\u5F02\u5E38");
+    if (!Array.isArray(serverFiles)) throw new Error("Unexpected server response format");
     out.serverFileCount = serverFiles.length;
     console.log("\u30101. \u670D\u52A1\u5668\u5B9E\u9645\u6587\u4EF6\u3011");
     console.log(`  \u603B\u6570: ${serverFiles.length}`, extCount(serverFiles));
@@ -86167,7 +86169,7 @@ async function cleanupConfigStorage(options = {}) {
         result.deletedUnreferenced.push(id);
       }
     } catch (e) {
-      result.errors.push(`\u6E05\u7406\u5E9F\u5F03\u56FE\u7247\u5931\u8D25: ${id} - ${e.message}`);
+      result.errors.push(`Failed to clean up unused images: ${id} - ${e.message}`);
     }
     await new Promise((r) => setTimeout(r, 30));
   }
@@ -86194,10 +86196,10 @@ async function cleanupConfigStorage(options = {}) {
       if (resp.ok || resp.status === 404) {
         result.deletedFiles.push(fileName);
       } else {
-        result.errors.push(`\u5220\u9664\u5931\u8D25 (${resp.status}): ${fileName}`);
+        result.errors.push(`Deletion failed (${resp.status}): ${fileName}`);
       }
     } catch (e) {
-      result.errors.push(`\u5220\u9664\u5F02\u5E38: ${fileName} - ${e.message}`);
+      result.errors.push(`Deletion error: ${fileName} - ${e.message}`);
     }
     await new Promise((r) => setTimeout(r, 50));
   }
@@ -86825,27 +86827,27 @@ var statusIcons = {
   [TaskStatus.FAILED]: "\u26A0\uFE0F"
 };
 var statusTexts = {
-  [TaskStatus.QUEUED]: "\u6392\u961F\u4E2D",
-  [TaskStatus.RUNNING]: "\u8FD0\u884C\u4E2D",
-  [TaskStatus.COMPLETED]: "\u5DF2\u5B8C\u6210",
-  [TaskStatus.CANCELLED]: "\u5DF2\u53D6\u6D88",
-  [TaskStatus.FAILED]: "\u5931\u8D25"
+  [TaskStatus.QUEUED]: "Queued",
+  [TaskStatus.RUNNING]: "Running",
+  [TaskStatus.COMPLETED]: "Completed",
+  [TaskStatus.CANCELLED]: "Cancelled",
+  [TaskStatus.FAILED]: "Failed"
 };
 var typeTexts = {
-  [TaskType.BUTTON]: "\u6309\u94AE",
-  [TaskType.NOVELAI]: "novelai \u751F\u56FE",
-  [TaskType.COMFYUI]: "comfyui\u666E\u901A\u751F\u56FE",
-  [TaskType.COMFYUI_IMG]: "comfyui\u666E\u901A\u751F\u56FE",
-  [TaskType.COMFYUI_IMG2VID]: "comfyui\u56FE\u751F\u89C6\u9891",
-  [TaskType.COMFYUI_REF2VID]: "comfyui\u53C2\u8003\u751F\u89C6\u9891",
-  [TaskType.RUNNINGHUB]: "runninghub\u666E\u901A\u751F\u56FE",
-  [TaskType.RUNNINGHUB_IMG]: "runninghub\u666E\u901A\u751F\u56FE",
-  [TaskType.RUNNINGHUB_IMG2VID]: "runninghub\u56FE\u751F\u89C6\u9891",
-  [TaskType.RUNNINGHUB_REF2VID]: "runninghub\u53C2\u8003\u751F\u89C6\u9891",
-  [TaskType.AUTO_CLICK]: "\u81EA\u52A8\u70B9\u51FB",
-  [TaskType.LLM]: "LLM \u8BF7\u6C42",
-  [TaskType.BANANA]: "Banana \u751F\u56FE",
-  [TaskType.SD]: "SD \u751F\u56FE"
+  [TaskType.BUTTON]: "Button",
+  [TaskType.NOVELAI]: "NovelAI image",
+  [TaskType.COMFYUI]: "ComfyUI image",
+  [TaskType.COMFYUI_IMG]: "ComfyUI image",
+  [TaskType.COMFYUI_IMG2VID]: "ComfyUI image to video",
+  [TaskType.COMFYUI_REF2VID]: "ComfyUI reference to video",
+  [TaskType.RUNNINGHUB]: "RunningHub image",
+  [TaskType.RUNNINGHUB_IMG]: "RunningHub image",
+  [TaskType.RUNNINGHUB_IMG2VID]: "RunningHub image to video",
+  [TaskType.RUNNINGHUB_REF2VID]: "RunningHub reference to video",
+  [TaskType.AUTO_CLICK]: "Auto click",
+  [TaskType.LLM]: "LLM request",
+  [TaskType.BANANA]: "Banana image",
+  [TaskType.SD]: "SD image"
 };
 function renderTaskList(tasks) {
   const container = document.getElementById("ch-task-list");
@@ -87463,7 +87465,7 @@ function renderLegend() {
   let html = '<div class="ch-gen-legend-container">';
   html += `<span class="ch-gen-legend-item">`;
   html += `<svg width="16" height="8" style="flex-shrink:0;"><line x1="0" y1="4" x2="16" y2="4" stroke="rgba(255,255,255,0.85)" stroke-width="2.6" stroke-linecap="round"/></svg>`;
-  html += `\u603B\u8BA1</span>`;
+  html += `Total</span>`;
   for (const [, meta] of Object.entries(BACKEND_LABELS)) {
     html += `<span class="ch-gen-legend-item">`;
     html += `<svg width="16" height="8" style="flex-shrink:0;"><line x1="0" y1="4" x2="16" y2="4" stroke="${meta.color}" stroke-width="2" stroke-linecap="round"/></svg>`;
@@ -87755,7 +87757,7 @@ function handleDebugToggle(event) {
 }
 function handleDownloadDebugLog() {
   const logContent = exportDebugLog();
-  if (!logContent || logContent === "\u8C03\u8BD5\u65E5\u5FD7\u4E3A\u7A7A\u3002") {
+  if (!logContent || logContent === "Debug log is empty.") {
     alert("Debug log is empty.");
     return;
   }
@@ -87842,7 +87844,7 @@ function handleViewErrors() {
 }
 async function handleDownloadErrors() {
   const logContent = await exportErrors();
-  if (!logContent || logContent === "\u6682\u65E0\u9519\u8BEF\u8BB0\u5F55\u3002") {
+  if (!logContent || logContent === "No error records.") {
     alert("No errors to include in diagnostic export.");
     return;
   }
@@ -89756,7 +89758,7 @@ async function testComfyui() {
         const errorText = await response.text();
         alert("Error response; check the URL" + errorText);
         addLog(`"\u6D4B\u8BD5\u94FE\u63A5\u5931\u8D25\u7F51\u5740:${testurl1} \u9519\u8BEF\u8BE6\u60C5:"${JSON.stringify(errorText)},\u8BF7\u6C42\u5931\u8D25,\u72B6\u6001\u7801: ${response.status}`);
-        throw new Error(`\u8BF7\u6C42\u5931\u8D25,\u72B6\u6001\u7801: ${response.status}`);
+        throw new Error(`Request failed. HTTP status: ${response.status}`);
       }
       const response2 = await fetch("/api/sd/comfy/samplers", { method: "POST", body: JSON.stringify({ url: testurl1 }), headers: getRequestHeaders(window.token) });
       const response3 = await fetch("/api/sd/comfy/vaes", { method: "POST", body: JSON.stringify({ url: testurl1 }), headers: getRequestHeaders(window.token) });
@@ -89839,7 +89841,7 @@ async function testSd() {
         headers: getRequestHeaders(window.token)
       })));
       for (const response of responses) {
-        if (!response.ok) throw new Error(`API \u8BF7\u6C42\u5931\u8D25: ${response.status} ${response.statusText} for ${response.url}`);
+        if (!response.ok) throw new Error(`API request failed: ${response.status} ${response.statusText} for ${response.url}`);
       }
       const [samplers, models, vaes, schedulers, upscalers] = await Promise.all(responses.map((res) => res.json()));
       const cacheData = {
@@ -89872,8 +89874,8 @@ async function testSd() {
       const results = await Promise.allSettled(Object.values(endpoints).map((endpoint) => fetch(baseUrl + endpoint, { headers: { "Authorization": getsdAuth() } })));
       const fulfilledResponses = results.map((result) => result.status === "fulfilled" && result.value.ok ? result.value : null);
       if (fulfilledResponses.every((r) => r === null)) {
-        const firstError = results.find((r) => r.status === "rejected")?.reason?.message || results.find((r) => r.status === "fulfilled" && !r.value.ok)?.value?.statusText || "\u672A\u77E5\u9519\u8BEF";
-        throw new Error(`\u6240\u6709API\u8BF7\u6C42\u5747\u5931\u8D25. \u7B2C\u4E00\u4E2A\u9519\u8BEF: ${firstError}`);
+        const firstError = results.find((r) => r.status === "rejected")?.reason?.message || results.find((r) => r.status === "fulfilled" && !r.value.ok)?.value?.statusText || "Unknown error";
+        throw new Error(`All API requests failed. First error: ${firstError}`);
       }
       const dataPromises = fulfilledResponses.map((response) => response ? response.json() : Promise.resolve(null));
       const [samplers, models, vaes, schedulers, upscalers, latentUpscalers, loras] = await Promise.all(dataPromises);
@@ -90528,10 +90530,10 @@ function displayCachePage(page) {
           if (blob) {
             img.src = URL.createObjectURL(blob);
           } else {
-            img.alt = "\u52A0\u8F7D\u5931\u8D25";
+            img.alt = "Loading failed";
           }
         }).catch(() => {
-          img.alt = "\u52A0\u8F7D\u5931\u8D25";
+          img.alt = "Loading failed";
         });
         observer.unobserve(item);
       }
@@ -90801,7 +90803,7 @@ var RECALC_PHASE_LABELS = {
   writeback: "\u4FDD\u5B58\u7ED3\u679C",
   done: "\u5B8C\u6210",
   finished: "\u7EDF\u8BA1\u5B8C\u6210",
-  error: "\u7EDF\u8BA1\u5931\u8D25"
+  error: "Statistics scan failed"
 };
 function renderRecalcProgress(payload) {
   const panel = document.getElementById("image-cache-recalc-progress");
@@ -91554,7 +91556,7 @@ function updateNovelaiUcpOptions() {
     if (currentValue === "none") currentValue = "";
   }
   for (const [text, value] of Object.entries(options)) {
-    const option = new Option(text, value);
+    const option = new Option(optionLabel(text), value);
     ucpSelect.add(option);
   }
   ucpSelect.value = currentValue;
@@ -91586,7 +91588,7 @@ function updateNovelaiModelSchedule(isInitial = false) {
   if (selectedModel === "nai-diffusion-3") {
     if (ddimOption) ddimOption.style.display = "";
     if (!nativeOption) {
-      const option = new Option("native", "native");
+      const option = new Option(optionLabel("native"), "native");
       scheduleSelect.insertBefore(option, scheduleSelect.firstChild);
       if (settings3.Schedule === "native") {
         scheduleSelect.value = "native";
@@ -92025,7 +92027,7 @@ function showVibeGeneratorDialog() {
     const presets = settings3.vibePresets;
     const sortedKeys = Object.keys(presets).sort((a, b) => a.localeCompare(b, "zh-CN"));
     for (const key of sortedKeys) {
-      const option = new Option(key, key);
+      const option = new Option(optionLabel(key), key);
       presetSelect.add(option);
     }
     presetSelect.value = settings3.vibePresetId;
@@ -92417,10 +92419,10 @@ function showVibeGeneratorDialog() {
         try {
           const vibeData = JSON.parse(readerEvent.target.result);
           if (vibeData.identifier !== "novelai-vibe-transfer") {
-            throw new Error("\u4E0D\u662F\u6709\u6548\u7684 NovelAI Vibe \u6587\u4EF6");
+            throw new Error("Invalid NovelAI Vibe file");
           }
           if (!vibeData.encodings || Object.keys(vibeData.encodings).length === 0) {
-            throw new Error("Vibe \u6587\u4EF6\u4E2D\u6CA1\u6709\u7F16\u7801\u6570\u636E");
+            throw new Error("Vibe file contains no encoded data");
           }
           const importInfo = vibeData.importInfo || {};
           const model = importInfo.model || "nai-diffusion-4-5-full";
@@ -92431,10 +92433,10 @@ function showVibeGeneratorDialog() {
           let shouldSavePreviewImage = false;
           const warnings = [];
           if (!imageBase64) {
-            warnings.push("Vibe \u6587\u4EF6\u4E2D\u7F3A\u5C11\u9884\u89C8\u56FE\u7247\uFF08image \u5B57\u6BB5\uFF09\uFF0C\u5C06\u4EC5\u4FDD\u5B58\u7F16\u7801\u6570\u636E");
+            warnings.push("Vibe file has no preview image (image field). Only encoded data will be saved.");
           }
           if (!vibeData.importInfo) {
-            warnings.push("Vibe \u6587\u4EF6\u4E2D\u7F3A\u5C11 importInfo\uFF0C\u4F7F\u7528\u9ED8\u8BA4\u6A21\u578B\u548C\u5F3A\u5EA6");
+            warnings.push("Vibe file has no importInfo. Using the default model and strength.");
           }
           if (thumbnailDataUrl) {
             importedPreviewDataUrl = thumbnailDataUrl;
@@ -92549,7 +92551,7 @@ function showVibeGeneratorDialog() {
         model
       };
       if (settings3.novelaisite && settings3.novelaisite !== "\u5B98\u7F51" && settings3.client === "jiuguan") {
-        throw new Error("\u9152\u9986\u7AEF\u4E0D\u652F\u6301\u81EA\u5B9A\u4E49\u7AD9\u70B9\u7684 Vibe \u7F16\u7801\uFF01");
+        throw new Error("The SillyTavern backend does not support Vibe encoding on custom sites.");
       }
       const { candidates, rawOtherSite } = getNovelAICandidateUrls("/ai/encode-vibe");
       console.log(`[Vibe] \u7F16\u7801\u8BF7\u6C42\u5019\u9009 URLs:`, candidates);
@@ -92569,7 +92571,7 @@ function showVibeGeneratorDialog() {
       const vibeBase64 = uint8ArrayToBase643(vibeUint8);
       console.log(`[Vibe] encoding \u539F\u59CB\u5B57\u8282: ${vibeUint8.length} bytes, base64 \u957F\u5EA6: ${vibeBase64.length}`);
       if (vibeUint8.length < 100) {
-        throw new Error(`encoding \u6570\u636E\u5F02\u5E38 (\u4EC5 ${vibeUint8.length} bytes)\uFF0CAPI \u53EF\u80FD\u8FD4\u56DE\u4E86\u9519\u8BEF\u54CD\u5E94`);
+        throw new Error(`Invalid encoding data (only ${vibeUint8.length} bytes). The API may have returned an error.`);
       }
       showStatus3("4/6 Building Vibe JSON...", "loading");
       const imageFormat = imageToProcess.type?.split("/")[1] || "png";
@@ -92635,11 +92637,11 @@ function showVibeGeneratorDialog() {
       showStatus3("Preparing download...", "loading");
       const jsonString = await getConfigText(currentVibeDataId);
       if (!jsonString) {
-        throw new Error("\u65E0\u6CD5\u8BFB\u53D6 Vibe \u6570\u636E");
+        throw new Error("Could not read Vibe data");
       }
       const parsed = JSON.parse(jsonString);
       if (parsed.identifier !== "novelai-vibe-transfer") {
-        throw new Error("\u5B58\u50A8\u7684\u6570\u636E\u4E0D\u662F\u6709\u6548\u7684 Vibe \u683C\u5F0F");
+        throw new Error("Stored data is not valid Vibe data");
       }
       const blob = new Blob([jsonString], { type: "application/json" });
       const url = window.URL.createObjectURL(blob);
@@ -92829,7 +92831,7 @@ function showCharRefUploadDialog() {
       return a.localeCompare(b, "zh-CN");
     });
     for (const key of sortedKeys) {
-      const option = new Option(key, key);
+      const option = new Option(optionLabel(key), key);
       presetSelect.add(option);
     }
     presetSelect.value = settings3.charRefPresetId;
@@ -93124,7 +93126,7 @@ function loadCharRefGroupList(selectElement) {
   groupNames.forEach((groupName) => {
     const option = document.createElement("option");
     option.value = groupName;
-    option.textContent = groupName;
+    option.textContent = optionLabel(groupName);
     if (groupName === currentGroupId) {
       option.selected = true;
     }
@@ -93337,7 +93339,7 @@ async function renderCharRefSlots(slotsContainer, groupSelect, addRefBtn) {
             <div style="display: flex; gap: 1rem; align-items: flex-start;">
                 <!-- Image Thumbnail -->
                 <div style="flex-shrink: 0;">
-                    <img src="${imageDataUrl || ""}" alt="\u53C2\u8003\u56FE ${i + 1}" 
+                    <img src="${imageDataUrl || ""}" alt="Reference image ${i + 1}"
                          style="width: 120px; height: 120px; object-fit: cover; border-radius: 6px; background: rgba(255, 255, 255, 0.05);"
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                     <div style="width: 120px; height: 120px; display: ${imageDataUrl ? "none" : "flex"}; align-items: center; justify-content: center; border-radius: 6px; background: rgba(255, 255, 255, 0.05); color: rgba(255, 255, 255, 0.3);">
@@ -93813,7 +93815,7 @@ async function buildTagTree() {
     } else {
       data = await dbs.getTagsTreeData();
       if (!data || !data.tag_groups) {
-        throw new Error("\u65E0\u6CD5\u4ECE\u6570\u636E\u5E93\u52A0\u8F7D\u7ED3\u6784\u5316\u6807\u7B7E\u6570\u636E\u3002");
+        throw new Error("Could not load structured tag data from the database.");
       }
       cachedTagTreeData = data;
     }
@@ -94004,7 +94006,7 @@ async function installVocabulary2(fileName) {
     const decryptedBytes = CryptoJS.AES.decrypt(encryptedText, encryptionKey);
     const decryptedText = decryptedBytes.toString(CryptoJS.enc.Utf8);
     if (!decryptedText) {
-      throw new Error("\u89E3\u5BC6\u5931\u8D25\uFF0C\u5185\u5BB9\u4E3A\u7A7A\u3002\u53EF\u80FD\u662F\u5BC6\u94A5\u4E0D\u5339\u914D\u6216\u6587\u4EF6\u5DF2\u635F\u574F\u3002");
+      throw new Error("Decryption failed: empty content. The key may not match, or the file may be damaged.");
     }
     const data = JSON.parse(decryptedText);
     await dbs.installVocabulary(fileName, data);
@@ -94266,7 +94268,7 @@ async function handleManualTagsImport(event) {
     try {
       const importedData = JSON.parse(e.target.result);
       if (!Array.isArray(importedData)) {
-        throw new Error("\u6587\u4EF6\u683C\u5F0F\u4E0D\u6B63\u786E\uFF0C\u5E94\u4E3A\u5305\u542B\u6807\u7B7E\u5BF9\u8C61\u7684\u6570\u7EC4");
+        throw new Error("Invalid file format: expected an array of tag objects");
       }
       const existingTags = await dbs.getManualTags();
       const existingTagNames = new Set(existingTags.map((t) => t.name.toLowerCase()));
@@ -94516,7 +94518,7 @@ function initBananaUI(settingsModal) {
     presetNames.forEach((name) => {
       const option = document.createElement("option");
       option.value = name;
-      option.textContent = name;
+      option.textContent = optionLabel(name);
       if (name === currentEditPresetId) {
         option.selected = true;
       }
@@ -94533,7 +94535,7 @@ function initBananaUI(settingsModal) {
     presetNames.forEach((name) => {
       const option = document.createElement("option");
       option.value = name;
-      option.textContent = name;
+      option.textContent = optionLabel(name);
       if (name === currentVideoPresetId) {
         option.selected = true;
       }
@@ -94549,7 +94551,7 @@ function initBananaUI(settingsModal) {
     presetNames.forEach((name) => {
       const option = document.createElement("option");
       option.value = name;
-      option.textContent = name;
+      option.textContent = optionLabel(name);
       if (name === currentPresetId) {
         option.selected = true;
       }
@@ -95015,13 +95017,13 @@ function initBananaUI(settingsModal) {
           console.log("[BananaUI] \u76F4\u63A5\u8BF7\u6C42\u83B7\u53D6\u6A21\u578B\u5217\u8868");
         }
         if (!response.ok) {
-          throw new Error(`\u83B7\u53D6\u6A21\u578B\u5931\u8D25: ${response.status}`);
+          throw new Error(`Failed to fetch model: ${response.status}`);
         }
         const result = await response.json();
         console.log("[BananaUI] \u83B7\u53D6\u5230\u7684\u6A21\u578B\u54CD\u5E94:", result);
         if (result.error) {
           if (result.error === true) {
-            throw new Error("\u9152\u9986\u540E\u7AEF\u4EE3\u7406\u8FDE\u63A5\u5931\u8D25\uFF1AAPI Key \u9519\u8BEF/\u65E0\u6548\uFF0C\u6216 API \u5730\u5740\u65E0\u6CD5\u8FDE\u63A5 (401/404)");
+            throw new Error("SillyTavern proxy connection failed. Check the API key and API URL (401/404).");
           }
           throw new Error(result.error.message || JSON.stringify(result.error));
         }
@@ -95052,7 +95054,7 @@ function initBananaUI(settingsModal) {
         models.forEach((model) => {
           const option = document.createElement("option");
           option.value = model.id;
-          option.textContent = model.id;
+          option.textContent = optionLabel(model.id);
           modelSelect2.appendChild(option);
         });
         if (editModelSelect) {
@@ -95060,7 +95062,7 @@ function initBananaUI(settingsModal) {
           models.forEach((model) => {
             const option = document.createElement("option");
             option.value = model.id;
-            option.textContent = model.id;
+            option.textContent = optionLabel(model.id);
             editModelSelect.appendChild(option);
           });
         }
@@ -95069,7 +95071,7 @@ function initBananaUI(settingsModal) {
           models.forEach((model) => {
             const option = document.createElement("option");
             option.value = model.id;
-            option.textContent = model.id;
+            option.textContent = optionLabel(model.id);
             videoModelSelect.appendChild(option);
           });
         }
@@ -95122,7 +95124,7 @@ function initBananaUI(settingsModal) {
     if (!existingOption) {
       const newOption = document.createElement("option");
       newOption.value = savedModel;
-      newOption.textContent = savedModel;
+      newOption.textContent = optionLabel(savedModel);
       modelSelect2.appendChild(newOption);
     }
     modelSelect2.value = savedModel;
@@ -95133,7 +95135,7 @@ function initBananaUI(settingsModal) {
     if (!existingEditOption) {
       const newEditOption = document.createElement("option");
       newEditOption.value = savedEditModel;
-      newEditOption.textContent = savedEditModel;
+      newEditOption.textContent = optionLabel(savedEditModel);
       editModelSelect.appendChild(newEditOption);
     }
     editModelSelect.value = savedEditModel;
@@ -95170,7 +95172,7 @@ function initBananaUI(settingsModal) {
     if (!existingVideoOption) {
       const newVideoOption = document.createElement("option");
       newVideoOption.value = savedVideoModel;
-      newVideoOption.textContent = savedVideoModel;
+      newVideoOption.textContent = optionLabel(savedVideoModel);
       videoModelSelect.appendChild(newVideoOption);
     }
     videoModelSelect.value = savedVideoModel;
@@ -95212,7 +95214,7 @@ function initBananaPromptReplace() {
     Object.keys(presets).forEach((name) => {
       const option = document.createElement("option");
       option.value = name;
-      option.textContent = name;
+      option.textContent = optionLabel(name);
       if (name === currentId) option.selected = true;
       presetSelect.appendChild(option);
     });
@@ -95525,7 +95527,7 @@ function showInheritWorkflowSelectModal(candidateNames, currentName) {
     candidateNames.forEach((name) => {
       const opt = document.createElement("option");
       opt.value = name;
-      opt.textContent = name;
+      opt.textContent = optionLabel(name);
       select.appendChild(opt);
     });
     field.appendChild(select);
@@ -96139,7 +96141,7 @@ async function uploadRunningHubMedia(file, type, index, apiKey) {
   if (!key) {
     key = await getUsableRunningHubKeyForUpload();
   }
-  if (!key) throw new Error("\u8BF7\u5148\u586B\u5199 RunningHub API Key");
+  if (!key) throw new Error("Enter a RunningHub API key first");
   let uploadFile2 = file;
   if (type === "img" || file && file.type && file.type.startsWith("image/")) {
     try {
@@ -96189,7 +96191,7 @@ async function uploadRunningHubMedia(file, type, index, apiKey) {
     }
     return fileName;
   } else {
-    throw new Error(data.msg || "\u4E0A\u4F20\u6587\u4EF6\u5230 RunningHub \u5931\u8D25");
+    throw new Error(data.msg || "Failed to upload file to RunningHub");
   }
 }
 function openRunningHubSelectOptionsEditor({ title, settingKey, optionsKey, defaultOptions = [], selectEl }) {
@@ -96842,7 +96844,7 @@ function initRunningHubUI(settingsModal) {
       if (!selectEl) return;
       selectEl.innerHTML = "";
       presetNames.forEach((name) => {
-        const opt = new Option(name, name);
+        const opt = new Option(optionLabel(name), name);
         selectEl.add(opt);
       });
       let currentId = settings3[cat.workeridKey];
@@ -97414,7 +97416,7 @@ function initRunningHubUI(settingsModal) {
             accountErr = acc?.msg || "\u8D26\u6237\u67E5\u8BE2\u5931\u8D25";
           }
         } catch (e) {
-          accountErr = e.message || "\u7F51\u7EDC\u8FDE\u63A5\u5F02\u5E38";
+          accountErr = e.message || "Network connection error";
         }
         try {
           const q = await fetchRunningHubQueueStatus(key);
@@ -97424,7 +97426,7 @@ function initRunningHubUI(settingsModal) {
             queueErr = q?.msg || "\u5E76\u53D1\u72B6\u6001\u67E5\u8BE2\u5931\u8D25";
           }
         } catch (e) {
-          queueErr = e.message || "\u7F51\u7EDC\u8FDE\u63A5\u5F02\u5E38";
+          queueErr = e.message || "Network connection error";
         }
         return {
           index: index + 1,
@@ -97685,7 +97687,7 @@ function initRunningHubUI(settingsModal) {
         toastr.success(`[${testModeName}] Video generated; preview ready!${rhCostParts.length > 0 ? `(${rhCostParts.join(", ")})` : ""}`);
       }
     } catch (err) {
-      const isAborted = err.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88" || currentTestAbortController?.signal?.aborted;
+      const isAborted = err.message === "Task cancelled" || currentTestAbortController?.signal?.aborted;
       if (currentTestTaskId) {
         if (isAborted) {
           taskQueue.cancelTask(currentTestTaskId);
@@ -97876,7 +97878,7 @@ function initRunningHubUI(settingsModal) {
     const durationStr = durationSec > 0 ? `${durationSec.toFixed(1)}\u79D2` : "\u5DF2\u4E0A\u4F20";
     return { index, fileName, durationStr, hasAudio: true };
   }
-  function attachImagesToMessage9(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+  function attachImagesToMessage9(messages, messageIndex, images, imageLabel = "Reference image") {
     if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
       return messages;
     }
@@ -97985,7 +97987,7 @@ ${imgName}` : `
       }
       let prompt2 = buildPromptForRequestType("video_gen", userDemand || "");
       if (!prompt2 || prompt2.length === 0) {
-        throw new Error("\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D\u300C\u56FE\u751F\u89C6\u9891\u300D\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E");
+        throw new Error("No prompt available. Check the Image-to-video context preset in LLM settings.");
       }
       prompt2 = mergeAdjacentMessages(prompt2, getMergeOptionsForRequestType("video_gen"));
       const duration = document.getElementById("runninghub_val_duration")?.value || settings3.runninghub_val_duration || "4";
@@ -98106,7 +98108,7 @@ ${imgName}` : `
       }
       let prompt2 = buildPromptForRequestType("visual_mat_prep", userDemand || "");
       if (!prompt2 || prompt2.length === 0) {
-        throw new Error("\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D\u300C\u89C6\u6750\u51C6\u5907\u300D\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E");
+        throw new Error("No prompt available. Check the Visual asset preparation context preset in LLM settings.");
       }
       prompt2 = mergeAdjacentMessages(prompt2, getMergeOptionsForRequestType("visual_mat_prep"));
       const duration = document.getElementById("runninghub_val_duration")?.value || settings3.runninghub_val_duration || "4";
@@ -98222,7 +98224,7 @@ async function uploadComfyUIImageDirect(imageBlob, fileName) {
   const settings3 = extension_settings82[extensionName];
   const url = (settings3?.comfyuiUrl || "http://localhost:8188").trim();
   if (!url) {
-    throw new Error("\u8BF7\u5148\u5728 ComfyUI \u8BBE\u7F6E\u4E2D\u914D\u7F6E API \u5730\u5740");
+    throw new Error("Configure the API URL in ComfyUI settings first");
   }
   let finalBlob = imageBlob;
   let finalFileName = fileName || "upload.jpg";
@@ -98244,7 +98246,7 @@ async function uploadComfyUIImageDirect(imageBlob, fileName) {
   });
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`ComfyUI \u56FE\u7247\u4E0A\u4F20\u5931\u8D25: ${errText}`);
+    throw new Error(`ComfyUI image upload failed: ${errText}`);
   }
   const result = await res.json();
   return result.name;
@@ -98287,7 +98289,7 @@ function initComfyUIVideoUI() {
       if (!selectEl) return;
       selectEl.innerHTML = "";
       presetNames.forEach((name) => {
-        const opt = new Option(name, name);
+        const opt = new Option(optionLabel(name), name);
         selectEl.add(opt);
       });
       let currentId = settings3[cat.workeridKey];
@@ -99074,11 +99076,11 @@ function initComfyUIVideoUI() {
         $previewContainer.css("display", "flex");
         toastr.success(`\u{1F389} ${testModeName} successful!`);
       } else {
-        throw new Error("\u672A\u80FD\u83B7\u53D6\u5230\u751F\u6210\u89C6\u9891\u7684\u6709\u6548\u94FE\u63A5");
+        throw new Error("No valid generated video URL received");
       }
     } catch (err) {
       console.error("[ComfyUIVideoTest \u5931\u8D25]", err);
-      const isAborted = currentTestAbortController?.signal?.aborted || err.message === "\u4EFB\u52A1\u5DF2\u53D6\u6D88";
+      const isAborted = currentTestAbortController?.signal?.aborted || err.message === "Task cancelled";
       if (currentTestTaskId) {
         if (isAborted) {
           taskQueue.cancelTask(currentTestTaskId);
@@ -99281,7 +99283,7 @@ function initComfyUIVideoUI() {
     const durationStr = durationSec > 0 ? `${durationSec.toFixed(1)}\u79D2` : "\u5DF2\u4E0A\u4F20";
     return { index, fileName, durationStr, hasAudio: true };
   }
-  function attachImagesToMessage9(messages, messageIndex, images, imageLabel = "\u53C2\u8003\u56FE\u7247") {
+  function attachImagesToMessage9(messages, messageIndex, images, imageLabel = "Reference image") {
     if (!images || images.length === 0 || messageIndex < 0 || messageIndex >= messages.length) {
       return messages;
     }
@@ -99390,7 +99392,7 @@ ${imgName}` : `
       }
       let prompt2 = buildPromptForRequestType("video_gen", userDemand || "");
       if (!prompt2 || prompt2.length === 0) {
-        throw new Error("\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D\u300C\u56FE\u751F\u89C6\u9891\u300D\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E");
+        throw new Error("No prompt available. Check the Image-to-video context preset in LLM settings.");
       }
       prompt2 = mergeAdjacentMessages(prompt2, getMergeOptionsForRequestType("video_gen"));
       const duration = document.getElementById("comfyui_val_duration")?.value || settings3.comfyui_val_duration || "4";
@@ -99511,7 +99513,7 @@ ${imgName}` : `
       }
       let prompt2 = buildPromptForRequestType("visual_mat_prep", userDemand || "");
       if (!prompt2 || prompt2.length === 0) {
-        throw new Error("\u672A\u80FD\u83B7\u53D6\u5230\u63D0\u793A\u8BCD\uFF0C\u8BF7\u68C0\u67E5 LLM \u8BBE\u7F6E\u4E2D\u300C\u89C6\u6750\u51C6\u5907\u300D\u7684\u4E0A\u4E0B\u6587\u9884\u8BBE\u914D\u7F6E");
+        throw new Error("No prompt available. Check the Visual asset preparation context preset in LLM settings.");
       }
       prompt2 = mergeAdjacentMessages(prompt2, getMergeOptionsForRequestType("visual_mat_prep"));
       const duration = document.getElementById("comfyui_val_duration")?.value || settings3.comfyui_val_duration || "4";
@@ -101235,7 +101237,7 @@ function bindVideoPlaybackEvents() {
     }
     $("#va-fps-detected-opt").remove();
     if (isAutoDetected) {
-      $fpsSelect.prepend(`<option value="${fps}\" id=\"va-fps-detected-opt\" selected>⚡ Detected: ${fps} FPS</option>`);
+      $fpsSelect.prepend(`<option value="${fps}\" id=\"va-fps-detected-opt\" selected>⚡ Detected: ${optionLabel(fps)} FPS</option>`);
       $fpsSelect.val(String(fps));
     } else {
       $fpsSelect.val("30");
@@ -101778,7 +101780,7 @@ async function renderAssetsList() {
   for (const asset of filtered) {
     const catKey = asset.category || "character";
     const catOptions = VIDEO_ASSET_CATEGORIES.map((c) => `
-            <option value="${c.key}" ${catKey === c.key ? "selected" : ""}>${c.label}</option>
+            <option value="${c.key}" ${catKey === c.key ? "selected" : ""}>${optionLabel(c.label)}</option>
         `).join("");
     const isAudio = catKey === "audio";
     const mediaHtml = isAudio ? `
@@ -102194,7 +102196,7 @@ async function handleImport(e) {
     if (isZip) {
       const JSZipConstructor = window.stChatu8JSZip || window.JSZip;
       if (typeof JSZipConstructor !== "function") {
-        throw new Error("ZIP \u89E3\u6790\u7EC4\u4EF6\u672A\u5C31\u7EEA\uFF0C\u8BF7\u5237\u65B0\u9875\u9762\u540E\u91CD\u8BD5");
+        throw new Error("ZIP parser is not ready. Refresh the page and try again.");
       }
       const zip = await JSZipConstructor.loadAsync(file);
       let jsonEntry = zip.file("assets.json");
@@ -102205,7 +102207,7 @@ async function handleImport(e) {
         }
       }
       if (!jsonEntry) {
-        throw new Error("\u538B\u7F29\u5305\u5185\u672A\u627E\u5230\u8D44\u4EA7\u914D\u7F6E\u6E05\u5355 assets.json");
+        throw new Error("Archive is missing the assets.json manifest");
       }
       const jsonText = await jsonEntry.async("text");
       const parsed = JSON.parse(jsonText);
@@ -102253,7 +102255,7 @@ async function handleImport(e) {
       }
     }
     if (!Array.isArray(importedAssets) || importedAssets.length === 0) {
-      throw new Error("\u6587\u4EF6\u4E2D\u672A\u68C0\u6D4B\u5230\u6709\u6548\u7684\u89C6\u9891\u7D20\u6750\u6570\u636E");
+      throw new Error("File contains no valid video asset data");
     }
     const conflicts = checkVideoAssetsConflicts(importedAssets);
     pendingImportPackage = {
@@ -102322,7 +102324,7 @@ async function handleExecuteImport() {
     renderAssetsList();
     toastr.success(`Imported: ${stats.added} new, ${stats.overwritten} overwritten, ${stats.skipped} skipped, ${stats.mediaSaved} images stored.`, "Asset import complete", { timeOut: 5e3 });
   } catch (err) {
-    console.error("[VideoAssets] \u6267\u884C\u5BFC\u5165\u5931\u8D25:", err);
+    console.error("[VideoAssets] 执行Import failed:", err);
     toastr.error(`Import failed: ${err.message}`);
   } finally {
     $btnConfirm.prop("disabled", false).html("<i class=\"fa-solid fa-check\"></i> Start import");
@@ -102477,10 +102479,10 @@ function readFileAsCompressedDataUrl(file, maxWidth = 1280, maxHeight = 1280, qu
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
         resolve(dataUrl);
       };
-      img.onerror = () => reject(new Error("\u65E0\u6CD5\u89E3\u7801\u56FE\u7247"));
+      img.onerror = () => reject(new Error("Could not decode image"));
       img.src = e.target.result;
     };
-    reader.onerror = () => reject(new Error("\u8BFB\u53D6\u6587\u4EF6\u5931\u8D25"));
+    reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
 }
@@ -103349,7 +103351,7 @@ async function executeVideoAssetGeneration() {
       resultText2 = response;
     }
     if (!resultText2) {
-      throw new Error("LLM \u672A\u8FD4\u56DE\u6709\u6548\u5185\u5BB9");
+      throw new Error("LLM returned no valid content");
     }
     const cleanedResult = extractVideoAssetGenPrompt(resultText2) || resultText2.trim();
     $("#vag-reply-output").val(cleanedResult).trigger("input");
@@ -103359,7 +103361,7 @@ async function executeVideoAssetGeneration() {
     toastr.success(`🎉 Video asset generation completed in ${durationSec}s!`);
   } catch (err) {
     console.error("[VideoAssetGen] \u89C6\u9891\u8D44\u4EA7\u751F\u6210\u5931\u8D25:", err);
-    const errMsg = err?.message || "\u672A\u77E5\u9519\u8BEF";
+    const errMsg = err?.message || "Unknown error";
     $("#vag-status-text").text(`Generation failed: ${errMsg}`);
     toastr.error(`Generation failed: ${errMsg}`);
   } finally {
@@ -103557,7 +103559,7 @@ async function executeImageGeneration() {
       toastr.success(`🎉 Image generated in ${durationSec}s!`);
     } else {
       const errDetail = responseData.error || "\u751F\u56FE\u5F15\u64CE\u8FD4\u56DE\u5931\u8D25\u6216\u672A\u8FD4\u56DE\u56FE\u7247\u6570\u636E";
-      updateImageUIState(false, `\u751F\u56FE\u5931\u8D25: ${errDetail}`, "error");
+      updateImageUIState(false, `Image generation failed: ${errDetail}`, "error");
       toastr.error(`Image generation failed: ${errDetail}`);
     }
   };
@@ -104908,7 +104910,7 @@ function showClickActionBubble(point, targetElement) {
     imageGen: {
       text: "\u56FE\u7247\u751F\u6210",
       icon: "fa-solid fa-image",
-      description: "\u751F\u6210\u5F53\u524D\u573A\u666F\u76F8\u5173\u7684\u56FE\u7247",
+      description: "Generate an image for the current scene",
       action: () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u56FE\u7247\u751F\u6210");
         handlePromptRequest(targetElement, "gesture1");
@@ -104917,7 +104919,7 @@ function showClickActionBubble(point, targetElement) {
     visualPrep: {
       text: "\u89C6\u6750\u51C6\u5907",
       icon: "fa-solid fa-photo-film",
-      description: "\u751F\u6210\u573A\u666F\u5BF9\u5E94\u7684\u89C6\u6750",
+      description: "Generate visual assets for the current scene",
       action: () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u89C6\u6750\u51C6\u5907");
         handleVisualMatPrepRequest(targetElement, "gesture1");
@@ -104926,7 +104928,7 @@ function showClickActionBubble(point, targetElement) {
     charDesign: {
       text: "\u89D2\u8272/\u670D\u88C5\u8BBE\u8BA1",
       icon: "fa-solid fa-user-pen",
-      description: "\u751F\u6210\u89D2\u8272\u6216\u670D\u88C5\u8BBE\u8BA1",
+      description: "Generate a character or outfit design",
       action: () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u89D2\u8272/\u670D\u88C5\u8BBE\u8BA1");
         handleCharacterDesignRequest(targetElement);
@@ -104935,7 +104937,7 @@ function showClickActionBubble(point, targetElement) {
     personaGen: {
       text: "\u4EBA\u8BBE\u751F\u6210",
       icon: "fa-solid fa-id-card",
-      description: "\u6839\u636E\u5F53\u524D\u89D2\u8272\u5361\u751F\u6210\u4EBA\u8BBE\u6570\u636E",
+      description: "Generate persona data from the current character card",
       action: () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u4EBA\u8BBE\u751F\u6210");
         handlePersonaGenFromClick(targetElement);
@@ -104944,7 +104946,7 @@ function showClickActionBubble(point, targetElement) {
     deleteUnlocked: {
       text: "\u5220\u9664\u975E\u9501\u5B9A\u56FE\u7247",
       icon: "fa-solid fa-trash",
-      description: "\u5220\u9664\u5F53\u524D\u5143\u7D20\u7684\u56FE\u7247",
+      description: "Delete images for this element",
       action: async () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u5220\u9664\u56FE\u7247");
         const result = await deleteImagesForElement(targetElement);
@@ -104956,7 +104958,7 @@ function showClickActionBubble(point, targetElement) {
     lockAllTags: {
       text: "\u9501\u5B9A\u6240\u6709Tag",
       icon: "fa-solid fa-lock",
-      description: "\u9501\u5B9A\u5F53\u524D\u5143\u7D20\u7684\u6240\u6709\u56FE\u7247\u6807\u7B7E",
+      description: "Lock all image tags for this element",
       action: async () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u9501\u5B9A\u6240\u6709Tag");
         const result = await lockAllTagsForElement(targetElement);
@@ -104970,7 +104972,7 @@ function showClickActionBubble(point, targetElement) {
     unlockAllTags: {
       text: "\u89E3\u9501\u6240\u6709Tag",
       icon: "fa-solid fa-unlock",
-      description: "\u89E3\u9501\u5F53\u524D\u5143\u7D20\u7684\u6240\u6709\u56FE\u7247\u6807\u7B7E",
+      description: "Unlock all image tags for this element",
       action: async () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u89E3\u9501\u6240\u6709Tag");
         const result = await unlockAllTagsForElement(targetElement);
@@ -104984,7 +104986,7 @@ function showClickActionBubble(point, targetElement) {
     collectFloorInfo: {
       text: "\u6536\u96C6\u697C\u5C42\u4FE1\u606F",
       icon: "fa-solid fa-layer-group",
-      description: "\u6536\u96C6\u5F53\u524D\u9152\u9986\u697C\u5C42\u6D88\u606F\u7528\u4E8EAI\u63D0\u793A\u8BCD",
+      description: "Collect the current chat message for the AI prompt",
       action: () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u6536\u96C6\u697C\u5C42\u4FE1\u606F");
         const result = setFloorTargetElement(targetElement);
@@ -105000,7 +105002,7 @@ function showClickActionBubble(point, targetElement) {
     collectBodyText: {
       text: "\u6B63\u6587\u6536\u96C6",
       icon: "fa-solid fa-file-lines",
-      description: "\u6536\u96C6\u5F53\u524D\u697C\u5C42\u6B63\u6587\u5E76\u5168\u8986\u76D6\u586B\u5165\u89C6\u9891\u8D44\u4EA7\u9875\u9762",
+      description: "Replace video asset page content with the current message text",
       action: async () => {
         console.log("[\u70B9\u51FB\u89E6\u53D1] \u89E6\u53D1\u6B63\u6587\u6536\u96C6");
         await collectAndSetBodyText(targetElement);
@@ -105503,7 +105505,7 @@ function getSharedRegexWorker() {
             pendingRegexRequests.delete(requestId);
             pendingReq.resolve({
               success: false,
-              error: `\u6B63\u5219\u6267\u884C\u8D85\u65F6 (>${REGEX_TIMEOUT_MS}ms)`,
+              error: `Regex execution timed out (>${REGEX_TIMEOUT_MS}ms)`,
               timeout: true
             });
           }
@@ -106225,7 +106227,7 @@ function loadRegexProfiles() {
   const currentProfileName = extension_settings90[extensionName].current_regex_profile;
   profileSelect2.empty();
   Object.keys(profiles).forEach((name) => {
-    const option = new Option(name, name, name === currentProfileName, name === currentProfileName);
+    const option = new Option(optionLabel(name), name, name === currentProfileName, name === currentProfileName);
     profileSelect2.append(option);
   });
   if (profileSelect2.val()) {
@@ -106397,38 +106399,38 @@ var DANGEROUS_REGEX_PATTERNS = [
   {
     // 嵌套量词: (a+)+, (a*)+, (a+)*, (.+)+, (.*)+, etc.
     pattern: /\([^)]*[+*][^)]*\)[+*]/,
-    name: "\u5D4C\u5957\u91CF\u8BCD",
-    description: "\u5982 (a+)+, (.+)+ \u4F1A\u5BFC\u81F4\u6307\u6570\u7EA7\u56DE\u6EAF"
+    name: "Nested quantifiers",
+    description: "Patterns such as (a+)+ and (.+)+ can cause exponential backtracking"
   },
   {
     // 连续通配量词: .*.*,  .+.+, .*?.+, etc.
     pattern: /\.\*\.\*|\.\+\.\+|\.\*\?\.\+|\.\+\?\.\*/,
-    name: "\u8FDE\u7EED\u901A\u914D\u7B26",
-    description: "\u5982 .*.*, .+.+ \u4F1A\u5BFC\u81F4\u5927\u91CF\u56DE\u6EAF"
+    name: "Consecutive wildcards",
+    description: "Patterns such as .*.* and .+.+ can cause excessive backtracking"
   },
   {
     // 贪婪匹配后跟随相似模式: .*\w, .+\w, .*\S, .+\S
     pattern: /\.\+[^?].*\.\+|\.\*[^?].*\.\*/,
-    name: "\u591A\u91CD\u8D2A\u5A6A\u5339\u914D",
-    description: "\u591A\u4E2A\u8D2A\u5A6A\u5339\u914D\u53EF\u80FD\u5BFC\u81F4\u6027\u80FD\u95EE\u9898"
+    name: "Multiple greedy matches",
+    description: "Multiple greedy matches may affect performance"
   },
   {
     // 空匹配循环: ()*, ()+, ()?+
     pattern: /\(\s*\)[+*]/,
-    name: "\u7A7A\u5339\u914D\u5FAA\u73AF",
-    description: "\u7A7A\u62EC\u53F7\u52A0\u91CF\u8BCD\u4F1A\u5BFC\u81F4\u65E0\u9650\u5FAA\u73AF"
+    name: "Empty-match loop",
+    description: "Quantified empty groups can cause infinite loops"
   },
   {
     // 复杂嵌套组合: ((a+)+)+, (((.*)+)+)+
     pattern: /\(\([^)]*[+*][^)]*\)[+*]\)/,
-    name: "\u6DF1\u5C42\u5D4C\u5957\u91CF\u8BCD",
-    description: "\u591A\u5C42\u5D4C\u5957\u91CF\u8BCD\u98CE\u9669\u6781\u9AD8"
+    name: "Deeply nested quantifiers",
+    description: "Deeply nested quantifiers are high risk"
   },
   {
     // 交替匹配与量词组合: (a|b+)+, (a*|b)+
     pattern: /\([^)]*\|[^)]*[+*][^)]*\)[+*]|\([^)]*[+*][^)]*\|[^)]*\)[+*]/,
-    name: "\u4EA4\u66FF\u91CF\u8BCD\u7EC4\u5408",
-    description: "\u5982 (a|b+)+ \u53EF\u80FD\u5BFC\u81F4\u56DE\u6EAF"
+    name: "Alternation with quantifiers",
+    description: "Patterns such as (a|b+)+ may cause backtracking"
   }
 ];
 function detectDangerousRegex(regexStr) {
@@ -106446,15 +106448,15 @@ function detectDangerousRegex(regexStr) {
   }
   if (regexStr.length > 500) {
     warnings.push({
-      name: "\u8FC7\u957F\u6B63\u5219",
-      description: `\u6B63\u5219\u957F\u5EA6 ${regexStr.length} \u5B57\u7B26\uFF0C\u53EF\u80FD\u5F71\u54CD\u6027\u80FD`
+      name: "Long regex",
+      description: `Regex length: ${regexStr.length} characters; may affect performance`
     });
   }
   const quantifierCount = (regexStr.match(/[+*?]|\{\d+,?\d*\}/g) || []).length;
   if (quantifierCount > 10) {
     warnings.push({
-      name: "\u8FC7\u591A\u91CF\u8BCD",
-      description: `\u5305\u542B ${quantifierCount} \u4E2A\u91CF\u8BCD\uFF0C\u53EF\u80FD\u5F71\u54CD\u6027\u80FD`
+      name: "Too many quantifiers",
+      description: `\u5305\u542B ${quantifierCount} quantifiers; may affect performance`
     });
   }
   return {
@@ -106545,7 +106547,7 @@ async function onTestRegexClick(requestId, options = {}) {
       }
       const dangerCheck = detectDangerousRegex(entry.findRegex);
       const hasCriticalDanger = dangerCheck.warnings.some(
-        (w) => w.name === "\u5D4C\u5957\u91CF\u8BCD" || w.name === "\u6DF1\u5C42\u5D4C\u5957\u91CF\u8BCD" || w.name === "\u7A7A\u5339\u914D\u5FAA\u73AF"
+        (w) => w.name === "Nested quantifiers" || w.name === "Deeply nested quantifiers" || w.name === "Empty-match loop"
       );
       if (hasCriticalDanger) {
         const warningNames = dangerCheck.warnings.map((w) => w.name).join(", ");
@@ -106972,7 +106974,7 @@ function loadDemandProfiles(selectTargetProfile = null) {
   if (!demandProfileSelect) return;
   demandProfileSelect.empty();
   Object.keys(profiles).forEach((name) => {
-    const option = new Option(name, name, name === currentName, name === currentName);
+    const option = new Option(optionLabel(name), name, name === currentName, name === currentName);
     demandProfileSelect.append(option);
   });
   demandProfileSelect.val(currentName);
@@ -107235,7 +107237,7 @@ function getRegexTestStatus() {
 }
 function setRegexOriginalText(text) {
   if (!originalText || originalText.length === 0) {
-    return "\u274C \u539F\u6587\u6846\u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Original text field is missing. Open the Regex tab first.";
   }
   originalText.val(text || "");
   return `\u2705 \u5DF2\u8BBE\u7F6E\u539F\u6587 (${(text || "").length} \u5B57\u7B26)`;
@@ -107244,7 +107246,7 @@ function setRegexEditors(beforeAfter, textRegex) {
   const results = [];
   if (beforeAfter !== void 0 && beforeAfter !== null) {
     if (!beforeAfterEditor || beforeAfterEditor.length === 0) {
-      results.push("\u274C \u524D\u540E\u6B63\u5219\u7F16\u8F91\u5668\u4E0D\u5B58\u5728");
+      results.push("❌ Before/after regex editor is missing");
     } else {
       beforeAfterEditor.val(beforeAfter);
       results.push(`\u2705 \u524D\u540E\u6B63\u5219\u5DF2\u8BBE\u7F6E`);
@@ -107252,7 +107254,7 @@ function setRegexEditors(beforeAfter, textRegex) {
   }
   if (textRegex !== void 0 && textRegex !== null) {
     if (!textEditor || textEditor.length === 0) {
-      results.push("\u274C \u6587\u5B57\u6B63\u5219\u7F16\u8F91\u5668\u4E0D\u5B58\u5728");
+      results.push("❌ Text regex editor is missing");
     } else {
       textEditor.val(textRegex);
       results.push(`\u2705 \u6587\u5B57\u6B63\u5219\u5DF2\u8BBE\u7F6E`);
@@ -107262,14 +107264,14 @@ function setRegexEditors(beforeAfter, textRegex) {
 }
 function createRegexEntryByAI(data) {
   if (!data || !data.findRegex) {
-    return "\u274C \u5FC5\u987B\u63D0\u4F9B findRegex \u5B57\u6BB5\u3002";
+    return "❌ The findRegex field is required.";
   }
   const containerInDocument = regexEntriesContainer && $.contains(document, regexEntriesContainer[0]);
   if (!containerInDocument) {
     regexEntriesContainer = $("#ch-regex-entries-container");
   }
   if (!regexEntriesContainer || regexEntriesContainer.length === 0) {
-    return "\u274C \u6B63\u5219\u6761\u76EE\u5BB9\u5668\u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Regex entry container is missing. Open the Regex tab first.";
   }
   regexEntriesContainer.find(".st-chatu8-entries-empty").remove();
   const newEntry = {
@@ -107295,12 +107297,12 @@ async function triggerRegexTest() {
 \u7ED3\u679C\u6587\u672C:
 ${resText ? resText.substring(0, 3e4) : "(\u7A7A)"}`;
   } catch (e) {
-    return `\u274C \u6B63\u5219\u6D4B\u8BD5\u5931\u8D25: ${e.message}`;
+    return `❌ Regex test failed: ${e.message}`;
   }
 }
 function setRegexTestMode(enabled) {
   if (!regexTestModeSwitch || regexTestModeSwitch.length === 0) {
-    return "\u274C \u6D4B\u8BD5\u6A21\u5F0F\u5F00\u5173\u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Test mode switch is missing. Open the Regex tab first.";
   }
   regexTestModeSwitch.prop("checked", !!enabled).trigger("change");
   return `\u2705 \u6B63\u5219\u6D4B\u8BD5\u6A21\u5F0F\u5DF2${enabled ? "\u5F00\u542F" : "\u5173\u95ED"}`;
@@ -107311,14 +107313,14 @@ function getRegexResultText() {
 }
 function setGestureEnabled(enabled) {
   if (!gestureEnabledSwitch || gestureEnabledSwitch.length === 0) {
-    return "\u274C \u624B\u52BF\u529F\u80FD\u5F00\u5173\u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Gesture switch is missing. Open the Regex tab first.";
   }
   gestureEnabledSwitch.prop("checked", !!enabled).trigger("change");
   return `\u2705 \u624B\u52BF\u529F\u80FD\u5DF2${enabled ? "\u5F00\u542F" : "\u5173\u95ED"}`;
 }
 function setClickTriggerEnabled(enabled) {
   if (!clickTriggerEnabledSwitch || clickTriggerEnabledSwitch.length === 0) {
-    return "\u274C \u70B9\u51FB\u89E6\u53D1\u5F00\u5173\u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Click trigger switch is missing. Open the Regex tab first.";
   }
   clickTriggerEnabledSwitch.prop("checked", !!enabled).trigger("change");
   return `\u2705 \u70B9\u51FB\u89E6\u53D1\u5DF2${enabled ? "\u5F00\u542F" : "\u5173\u95ED"}`;
@@ -107329,7 +107331,7 @@ function clearAllRegexEntries() {
     regexEntriesContainer = $("#ch-regex-entries-container");
   }
   if (!regexEntriesContainer || regexEntriesContainer.length === 0) {
-    return "\u274C \u6B63\u5219\u6761\u76EE\u5BB9\u5668\u4E0D\u5B58\u5728\uFF0C\u8BF7\u5148\u5207\u6362\u5230\u6B63\u5219\u9875\u9762\u3002";
+    return "❌ Regex entry container is missing. Open the Regex tab first.";
   }
   const count = regexEntriesContainer.find(".st-chatu8-preset-entry").length;
   regexEntriesContainer.empty();
@@ -108340,8 +108342,8 @@ function refreshNovelaiProfileSelect() {
   select.innerHTML = "";
   const sortedKeys = Object.keys(settings3.novelai_profiles).sort((a, b) => a.localeCompare(b, "zh-CN"));
   for (const key of sortedKeys) {
-    const option = new Option(key, key);
-    option.title = key;
+    const option = new Option(optionLabel(key), key);
+    option.title = optionLabel(key);
     select.add(option);
   }
   select.value = settings3.novelai_profile_id;
@@ -108359,8 +108361,8 @@ function refreshComfyuiProfileSelect() {
   select.innerHTML = "";
   const sortedKeys = Object.keys(settings3.comfyui_profiles).sort((a, b) => a.localeCompare(b, "zh-CN"));
   for (const key of sortedKeys) {
-    const option = new Option(key, key);
-    option.title = key;
+    const option = new Option(optionLabel(key), key);
+    option.title = optionLabel(key);
     select.add(option);
   }
   select.value = settings3.comfyui_profile_id;
@@ -108503,8 +108505,8 @@ function refreshRunninghubProfileSelect() {
   select.innerHTML = "";
   const sortedKeys = Object.keys(settings3.runninghub_profiles).sort((a, b) => a.localeCompare(b, "zh-CN"));
   for (const key of sortedKeys) {
-    const option = new Option(key, key);
-    option.title = key;
+    const option = new Option(optionLabel(key), key);
+    option.title = optionLabel(key);
     select.add(option);
   }
   select.value = settings3.runninghub_profile_id;
@@ -110061,7 +110063,7 @@ eventSource45.on(event_types6.GENERATION_ENDED, async (data) => {
         handlePromptRequest(el, "gesture1", { source: "auto", isAuto: true, skipDemandPopup: true });
       } catch (error) {
         console.error("[st-chatu8] handlePromptRequest failed:", error);
-        debugLog("autoLLMClick.GENERATION_ENDED", "handlePromptRequest \u8C03\u7528\u5931\u8D25", {
+        debugLog("autoLLMClick.GENERATION_ENDED", "handlePromptRequest failed", {
           error: error.message
         });
       }
@@ -110108,7 +110110,7 @@ function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("\u8BFB\u53D6\u56FE\u7247\u5931\u8D25"));
+    reader.onerror = () => reject(reader.error || new Error("Failed to read image"));
     reader.readAsDataURL(file);
   });
 }
@@ -110133,13 +110135,13 @@ function compressFabIconImage(dataUrl, file) {
       canvas.height = height;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-        reject(new Error("\u65E0\u6CD5\u5904\u7406\u56FE\u7247"));
+        reject(new Error("Could not process image"));
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
       resolve(canvas.toDataURL(file.type, FAB_ICON_QUALITY));
     };
-    img.onerror = () => reject(new Error("\u56FE\u7247\u52A0\u8F7D\u5931\u8D25"));
+    img.onerror = () => reject(new Error("Image loading failed"));
     img.src = dataUrl;
   });
 }
@@ -110272,7 +110274,7 @@ async function loadAllTabsContent(container) {
         if (missingBlocks.length > 0) {
           console.error("[Chatu8] \u5173\u952E\u58F0\u660E\u5185\u5BB9\u7F3A\u5931\uFF0C\u63D2\u4EF6\u65E0\u6CD5\u52A0\u8F7D");
           alert("⚠️ Essential extension files were modified; loading blocked. Reinstall the original extension.");
-          throw new Error("\u58F0\u660E\u5185\u5BB9\u6821\u9A8C\u5931\u8D25");
+          throw new Error("Declaration content validation failed");
         }
         return Promise.resolve(aboutContent);
       }
@@ -110488,13 +110490,13 @@ async function initUI({ check_update: check_update2 }) {
           selectEl.innerHTML = "";
           selectEl.disabled = false;
           if (id === "sd_cchatu_8_vae") {
-            selectEl.add(new Option("NONE", "NONE"));
+            selectEl.add(new Option(optionLabel("NONE"), "NONE"));
           }
           if (sdCache[cacheKey]) {
             sdCache[cacheKey].forEach((item) => {
               const name = item;
-              const option = new Option(name, name);
-              option.title = name;
+              const option = new Option(optionLabel(name), name);
+              option.title = optionLabel(name);
               selectEl.add(option);
             });
           }
@@ -110509,7 +110511,7 @@ async function initUI({ check_update: check_update2 }) {
       sdSelects.forEach(({ id, settingKey }) => {
         const selectEl = document.getElementById(id);
         if (selectEl) {
-          selectEl.innerHTML = `<option value="${settings2[settingKey]}">${settings2[settingKey]}</option>`;
+          selectEl.innerHTML = `<option value="${settings2[settingKey]}">${optionLabel(settings2[settingKey])}</option>`;
           selectEl.disabled = true;
         }
       });
@@ -110532,41 +110534,41 @@ async function initUI({ check_update: check_update2 }) {
       comfyCache.models.forEach((model) => {
         const text = typeof model === "object" && model !== null ? model.text || model.value || String(model) : String(model);
         const value = typeof model === "object" && model !== null ? model.value || String(model) : String(model);
-        const option = new Option(text, normalizeBackslashPath3(value));
-        option.title = text;
+        const option = new Option(optionLabel(text), normalizeBackslashPath3(value));
+        option.title = optionLabel(text);
         if (modelSelect2) modelSelect2.add(option);
       });
       comfyCache.vaes.forEach((vaeName) => {
         const name = typeof vaeName === "object" ? vaeName.value : vaeName;
-        const option = new Option(name, name);
-        option.title = name;
+        const option = new Option(optionLabel(name), name);
+        option.title = optionLabel(name);
         if (vaeSelect) vaeSelect.add(option);
       });
       comfyCache.schedulers.forEach((schedulerName) => {
         const name = typeof schedulerName === "object" ? schedulerName.value || schedulerName.name || String(schedulerName) : String(schedulerName);
-        const option = new Option(name, name);
-        option.title = name;
+        const option = new Option(optionLabel(name), name);
+        option.title = optionLabel(name);
         if (schedulerSelect) schedulerSelect.add(option);
       });
       comfyCache.samplers.forEach((samplerName) => {
         const name = typeof samplerName === "object" ? samplerName.value || samplerName.name || String(samplerName) : String(samplerName);
-        const option = new Option(name, name);
-        option.title = name;
+        const option = new Option(optionLabel(name), name);
+        option.title = optionLabel(name);
         if (samplerSelect) samplerSelect.add(option);
       });
       if (comfyCache.CLIPs) {
         comfyCache.CLIPs.forEach((CLIPName) => {
           const name = typeof CLIPName === "object" ? CLIPName.value || CLIPName.name || String(CLIPName) : String(CLIPName);
-          const option = new Option(name, name);
-          option.title = name;
+          const option = new Option(optionLabel(name), name);
+          option.title = optionLabel(name);
           if (CLIPSelect) CLIPSelect.add(option);
         });
       }
       if (loraSelect && comfyCache.loras && comfyCache.loras.length > 0) {
         comfyCache.loras.forEach((loraName) => {
           const name = typeof loraName === "object" ? loraName.value || loraName.name || String(loraName) : String(loraName);
-          const option = new Option(name.replace(".safetensors", ""), name.replace(".safetensors", ""));
-          option.title = name;
+          const option = new Option(optionLabel(name.replace(".safetensors", "")), name.replace(".safetensors", ""));
+          option.title = optionLabel(name);
           loraSelect.add(option);
         });
       } else if (loraSelect) {
@@ -110620,8 +110622,8 @@ async function initUI({ check_update: check_update2 }) {
       selects.forEach(({ el, setting }) => {
         if (el) {
           el.innerHTML = "";
-          const option = new Option(settings2[setting] || "\u672A\u8FDE\u63A5", settings2[setting]);
-          option.title = settings2[setting];
+          const option = new Option(optionLabel(settings2[setting] || "\u672A\u8FDE\u63A5"), settings2[setting]);
+          option.title = optionLabel(settings2[setting]);
           el.add(option);
           el.value = settings2[setting];
           el.disabled = true;
@@ -110640,8 +110642,8 @@ async function initUI({ check_update: check_update2 }) {
         yusheSelect.innerHTML = "";
         const sortedKeys = Object.keys(settings2.yushe).sort((a, b) => a.localeCompare(b, "zh-CN"));
         for (const key of sortedKeys) {
-          const option = new Option(key, key);
-          option.title = key;
+          const option = new Option(optionLabel(key), key);
+          option.title = optionLabel(key);
           yusheSelect.add(option);
         }
         yusheSelect.value = settings2[yusheIdKey];
@@ -110670,8 +110672,8 @@ async function initUI({ check_update: check_update2 }) {
       if (replaceSelect) {
         replaceSelect.innerHTML = "";
         for (const key in settings2.prompt_replace) {
-          const option = new Option(key, key);
-          option.title = key;
+          const option = new Option(optionLabel(key), key);
+          option.title = optionLabel(key);
           replaceSelect.add(option);
         }
         replaceSelect.value = settings2.prompt_replace_id;
@@ -110710,8 +110712,8 @@ async function initUI({ check_update: check_update2 }) {
     if (worldBookSelect) {
       worldBookSelect.innerHTML = "";
       for (const key in settings2.worldBookList) {
-        const option = new Option(key, key);
-        option.title = key;
+        const option = new Option(optionLabel(key), key);
+        option.title = optionLabel(key);
         worldBookSelect.add(option);
       }
       worldBookSelect.value = settings2.worldBookList_id;
@@ -110727,8 +110729,8 @@ async function initUI({ check_update: check_update2 }) {
     if (workerSelect) {
       workerSelect.innerHTML = "";
       for (const key in settings2.workers) {
-        const option = new Option(key, key);
-        option.title = key;
+        const option = new Option(optionLabel(key), key);
+        option.title = optionLabel(key);
         workerSelect.add(option);
       }
       workerSelect.value = settings2.workerid;
@@ -110737,8 +110739,8 @@ async function initUI({ check_update: check_update2 }) {
     if (editWorkerSelect) {
       editWorkerSelect.innerHTML = "";
       for (const key in settings2.workers) {
-        const option = new Option(key, key);
-        option.title = key;
+        const option = new Option(optionLabel(key), key);
+        option.title = optionLabel(key);
         editWorkerSelect.add(option);
       }
       editWorkerSelect.value = settings2.editWorkerid;
@@ -110772,8 +110774,8 @@ async function initUI({ check_update: check_update2 }) {
     if (fabThemeSelect.length) {
       fabThemeSelect.empty();
       for (const themeName in settings2.fabThemes) {
-        const option = new Option(themeName, themeName);
-        option.title = themeName;
+        const option = new Option(optionLabel(themeName), themeName);
+        option.title = optionLabel(themeName);
         fabThemeSelect.append(option);
       }
       fabThemeSelect.val(settings2.chatu8_fab_theme);
@@ -111767,7 +111769,7 @@ async function dispatchPregenTask(normPrompt) {
       if (isCompleted) return;
       isCompleted = true;
       const { success, error, prompt: responsePrompt } = responseData;
-      addLog(`[Pregen] \u6536\u5230\u751F\u6210\u54CD\u5E94 (ID: ${requestId}, \u72B6\u6001: ${success ? "\u6210\u529F" : "\u5931\u8D25"}${error ? ", \u9519\u8BEF: " + error : ""})`);
+      addLog(`[Pregen] \u6536\u5230\u751F\u6210\u54CD\u5E94 (ID: ${requestId}, \u72B6\u6001: ${success ? "\u6210\u529F" : "\u5931\u8D25"}${error ? ", error: " + error : ""})`);
       onTaskFinish();
     };
     cleanup = () => {

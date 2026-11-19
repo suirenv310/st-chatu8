@@ -188,7 +188,7 @@
 
 /* Empty State */
 .st-chatu8-vibe-slots:empty::before {
-    content: '暂无 Vibe';
+    content: 'No Vibes';
     display: block;
     text-align: center;
     padding: 3rem;

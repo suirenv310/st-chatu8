@@ -77,7 +77,7 @@
 
 /* Empty State */
 .st-chatu8-char-ref-slots:empty::before {
-    content: '暂无角色参考';
+    content: 'No character references';
     display: block;
     text-align: center;
     padding: 3rem;

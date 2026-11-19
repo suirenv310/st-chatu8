@@ -1,4 +1,4 @@
-# PixAI / English patch v0.6.0
+# PixAI / English patch v0.6.1
 
 Based on st-chatu8 3.2.1 (`a4c417f98e9697be44935486a0504713532994b3`).
 Original author: 从前跟你一样 / damoshen123. Modified 2026-11-19.
@@ -43,6 +43,20 @@ Validation includes the 25 PixAI/recipe tests, a merge structure comparison,
 mocked RunningHub paid-point balance checks and browser checks of the NovelAI
 balance panel at mobile and desktop widths. Provider billing and a deployed
 SillyTavern session were not exercised.
+
+## Changes in patch v0.6.1
+
+Translated locally generated errors and validation details across image/video
+providers, storage, LLM requests, speech and workflow editing. Translated option
+labels and tooltips for built-in presets, themes, voices and speaking styles.
+Option values and custom preset/model names retain their original identifiers.
+Empty-state captions in Vibe/reference groups and task status labels are English.
+
+Cancellation, timeout and non-retryable configuration-error detection recognize
+the translated messages. Validation includes all 29 tests, an audit of 530 local
+error fragments, stored-value comparisons and browser selector checks at 430px
+and 1200px. Provider-returned messages and existing user-authored content can
+still use their original language.
 
 ## PixAI Quick Copy
 
