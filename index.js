@@ -1,3 +1,20 @@
+import { ImageMetadata, mountStorageUI } from "./image-metadata.js";
+const imageMetadata = new ImageMetadata({
+  request: async (route, body) => {
+    const response = await fetch('/api/plugins/chatu8-storage' + route, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: getRequestHeaders(window.token),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const message = await response.json().catch(() => ({}));
+      throw new Error(message.error || `Image storage request failed (HTTP ${response.status}).`);
+    }
+    return response.json();
+  },
+  notify: message => { console.error('[Chatu8 storage]', message); window.toastr?.error(message, 'Chatu8 image storage'); },
+});
 /* Modified 2026-11-06: English UI v0.3.0; card/persona sources and appearance preset builder; fix Send Data list without character lorebook; translated settings, dialogs, and notifications.
  * PixAI preset v0.2.0: independent prompts, LoRA, sampling, keyword-only LLM rules.
  * Original st-chatu8 by 从前跟你一样 (damoshen123). AFPL v9, see LICENSE.
@@ -3819,6 +3836,7 @@ function executeSave(reason, force = false) {
   return finish;
 }
 function scheduleSettingsSave(reason = "index") {
+  if (imageMetadata.ready && reason === "index") { imageMetadata.changed(); return; }
   _stats.requests++;
   if (!isMergeEnabled()) {
     try {
@@ -4031,7 +4049,7 @@ async function getMergedAndSortedImages(md5) {
     hasServer: false,
     hasDB: false
   };
-  const storage = extension_settings[extensionName].jiuguanStorage || {};
+  const storage = imageMetadata.data || {};
   const serverEntry = storage[md5];
   let serverIndex = 0;
   if (serverEntry && Array.isArray(serverEntry.images) && serverEntry.images.length > 0) {
@@ -4084,7 +4102,7 @@ async function syncIndexToStorage(md5, globalIndex, sortedImages, skipStego = fa
   if (sortedImages.length === 0) correctedIndex = 0;
   else if (correctedIndex >= sortedImages.length) correctedIndex = sortedImages.length - 1;
   let jiuguanStorageModified = false;
-  const storage = extension_settings[extensionName].jiuguanStorage;
+  const storage = imageMetadata.data;
   if (storage && storage[md5]) {
     if (storage[md5].index !== correctedIndex) {
       storage[md5].index = correctedIndex;
@@ -4552,7 +4570,7 @@ async function performMigration() {
 async function getItemMeta(tag) {
   if (!tag) return { change: "", video: "", activeMode: "" };
   const md5 = CryptoJS.MD5(tag).toString();
-  const storage = extension_settings[extensionName].jiuguanStorage || {};
+  const storage = imageMetadata.data || {};
   const serverEntry = storage[md5];
   const metadata = await getMetadata();
   const dbEntry = metadata[md5];
@@ -4584,7 +4602,7 @@ async function getItemImg(tag, index = null) {
     return [false, false, false, false, "", "", ""];
   }
   const md5 = cryptoLib.MD5(tag).toString();
-  const storage = extension_settings[extensionName].jiuguanStorage || {};
+  const storage = imageMetadata.data || {};
   const serverEntry = storage[md5];
   const metadata = await getMetadata();
   const dbEntry = metadata[md5];
@@ -4793,10 +4811,10 @@ async function setItemImg(tag, imgBase64, options = { format: "png" }) {
           console.error("Failed to create or upload thumbnail:", thumbnailError);
         }
       }
-      if (!extension_settings[extensionName].jiuguanStorage) {
-        extension_settings[extensionName].jiuguanStorage = {};
+      if (!imageMetadata.data) {
+        imageMetadata.data = {};
       }
-      const storage = extension_settings[extensionName].jiuguanStorage;
+      const storage = imageMetadata.data;
       const newImageEntry = {
         uuid,
         path: imagePath,
@@ -4952,7 +4970,7 @@ async function setItemImg(tag, imgBase64, options = { format: "png" }) {
       if (frontIndex === -1) {
         frontIndex = frontMerged.images.length > 0 ? frontMerged.images.length - 1 : 0;
       }
-      const frontSettingsTouched = !!(extension_settings[extensionName].jiuguanStorage && extension_settings[extensionName].jiuguanStorage[md5]);
+      const frontSettingsTouched = !!(imageMetadata.data && imageMetadata.data[md5]);
       await syncIndexToStorage(md5, frontIndex, frontMerged.images);
       if (options.__tailCarry) {
         options.__tailCarry.hasTail = true;
@@ -5319,7 +5337,7 @@ async function generateMissingThumbnails() {
 }
 async function getItemBlob(tag, index = null) {
   const md5 = CryptoJS.MD5(tag).toString();
-  const storage = extension_settings[extensionName].jiuguanStorage || {};
+  const storage = imageMetadata.data || {};
   const serverEntry = storage[md5];
   if (serverEntry && Array.isArray(serverEntry.images) && serverEntry.images.length > 0) {
     let finalIndex = index;
@@ -5367,10 +5385,10 @@ async function updateItemImgChange(tag, change) {
   if (!tag) return;
   const md5 = CryptoJS.MD5(tag).toString();
   let updated = false;
-  if (!extension_settings[extensionName].jiuguanStorage) {
-    extension_settings[extensionName].jiuguanStorage = {};
+  if (!imageMetadata.data) {
+    imageMetadata.data = {};
   }
-  const storage = extension_settings[extensionName].jiuguanStorage;
+  const storage = imageMetadata.data;
   if (storage[md5]) {
     storage[md5].change = change;
     saveSettingsDebounced3();
@@ -5412,8 +5430,8 @@ async function updateItemImgChange(tag, change) {
 async function updateItemImgVideo(tag, video) {
   const md5 = CryptoJS.MD5(tag).toString();
   let updated = false;
-  if (extension_settings[extensionName].jiuguanStorage) {
-    const storage = extension_settings[extensionName].jiuguanStorage;
+  if (imageMetadata.data) {
+    const storage = imageMetadata.data;
     if (storage[md5]) {
       storage[md5].video = video;
       saveSettingsDebounced3();
@@ -5456,8 +5474,8 @@ async function updateItemImgVideo(tag, video) {
 async function updateItemImgActiveMode(tag, activeMode) {
   const md5 = CryptoJS.MD5(tag).toString();
   let updated = false;
-  if (extension_settings[extensionName].jiuguanStorage) {
-    const storage = extension_settings[extensionName].jiuguanStorage;
+  if (imageMetadata.data) {
+    const storage = imageMetadata.data;
     if (storage[md5]) {
       storage[md5].activeMode = activeMode;
       saveSettingsDebounced3();
@@ -5499,7 +5517,7 @@ async function deleteImage(tag, index) {
   const imageToDelete = merged.images[index];
   const source = imageToDelete.source;
   if (source === "server") {
-    const storage = extension_settings[extensionName].jiuguanStorage;
+    const storage = imageMetadata.data;
     const serverEntry = storage?.[md5];
     if (serverEntry && Array.isArray(serverEntry.images)) {
       const serverIndex = serverEntry.images.findIndex((img) => img.uuid === imageToDelete.uuid);
@@ -5589,7 +5607,7 @@ async function getAllImages(md5ORtag) {
   if (md5ORtag.length !== 32) {
     md5 = CryptoJS.MD5(md5ORtag).toString();
   }
-  const storage = extension_settings[extensionName].jiuguanStorage || {};
+  const storage = imageMetadata.data || {};
   const serverEntry = storage[md5] || storage[md5ORtag];
   if (serverEntry && Array.isArray(serverEntry.images)) {
     const serverImagePromises = serverEntry.images.map(async (imageEntry) => {
@@ -5632,7 +5650,7 @@ async function getAllImageBlobs(md5ORtag) {
   if (md5ORtag.length !== 32) {
     md5 = CryptoJS.MD5(md5ORtag).toString();
   }
-  const storage = extension_settings[extensionName].jiuguanStorage || {};
+  const storage = imageMetadata.data || {};
   const serverEntry = storage[md5] || storage[md5ORtag];
   if (serverEntry && Array.isArray(serverEntry.images)) {
     const blobPromises = serverEntry.images.map(async (imageEntry) => {
@@ -5680,7 +5698,7 @@ async function getImageBlobByUUID(uuid) {
     const mimeType = detectMimeFromBuffer(imageData.data);
     return new Blob([imageData.data], { type: mimeType });
   }
-  const serverStorage = extension_settings[extensionName].jiuguanStorage || {};
+  const serverStorage = imageMetadata.data || {};
   for (const md5 in serverStorage) {
     const entry = serverStorage[md5];
     if (entry && Array.isArray(entry.images)) {
@@ -5716,7 +5734,7 @@ async function getImageThumbnailBlobByUUID(thumbnail_uuid) {
 }
 async function getAllImageMetadata() {
   const mergedMetadata = {};
-  const serverStorage = extension_settings[extensionName].jiuguanStorage || {};
+  const serverStorage = imageMetadata.data || {};
   for (const md5 in serverStorage) {
     const entry = serverStorage[md5];
     if (entry && entry.images) {
@@ -5900,7 +5918,7 @@ async function runSizeCalculation(options = {}) {
     }
   };
   const dbMetadata = await getMetadata();
-  const serverStorage = extension_settings[extensionName].jiuguanStorage || {};
+  const serverStorage = imageMetadata.data || {};
   const knownDbIds = /* @__PURE__ */ new Set();
   const dbTargets = /* @__PURE__ */ new Map();
   for (const md5 in dbMetadata) {
@@ -6144,7 +6162,7 @@ async function deleteMultipleImages(md5s) {
   if (!Array.isArray(md5s) || md5s.length === 0) {
     return;
   }
-  const storage = extension_settings[extensionName].jiuguanStorage;
+  const storage = imageMetadata.data;
   if (storage) {
     const pathsToDelete = [];
     md5s.forEach((md5) => {
@@ -6220,7 +6238,7 @@ async function deleteImagesByUuids(uuids) {
   if (!Array.isArray(uuids) || uuids.length === 0) {
     return;
   }
-  const storage = extension_settings[extensionName].jiuguanStorage;
+  const storage = imageMetadata.data;
   if (storage) {
     const pathsToDelete = [];
     const uuidToMd5Map2 = /* @__PURE__ */ new Map();
@@ -6720,7 +6738,7 @@ async function syncServerImagesWithStorage(folderName = "chatu8", onProgress = n
     }
     if (onProgress) onProgress(10, 100, "\u6B63\u5728\u6E05\u7406\u5217\u8868\u4E2D\u5DF2\u4E0D\u5B58\u5728\u4E8E\u670D\u52A1\u5668\u7684\u6761\u76EE...");
     const serverFileSet = new Set(serverImageNames);
-    const storage = extension_settings[extensionName].jiuguanStorage || {};
+    const storage = imageMetadata.data || {};
     const metadata = await getMetadata();
     let totalStoragePaths = 0;
     for (const md5 in storage) {
@@ -6929,6 +6947,7 @@ async function syncServerImagesWithStorage(folderName = "chatu8", onProgress = n
   }
 }
 async function initJiuguanStorage() {
+  if (imageMetadata.ready) return;
   try {
     console.log("[Stego] \u5F00\u59CB\u521D\u59CB\u5316 jiuguanStorage...");
     const imagePayload = await fetchStegoImage();
@@ -6936,17 +6955,17 @@ async function initJiuguanStorage() {
       console.log("[Stego] \u627E\u5230\u9690\u5199\u56FE\u7247\uFF0C\u5F00\u59CB\u89E3\u7801...");
       try {
         const data = await decodeStegoPayload(imagePayload);
-        if (!extension_settings[extensionName].jiuguanStorage) {
-          extension_settings[extensionName].jiuguanStorage = {};
+        if (!imageMetadata.data) {
+          imageMetadata.data = {};
         }
-        extension_settings[extensionName].jiuguanStorage = data;
+        imageMetadata.data = data;
         console.log("[Stego] \u4ECE\u9690\u5199\u56FE\u7247\u52A0\u8F7D\u6570\u636E\u6210\u529F\uFF0C\u5171", Object.keys(data).length, "\u4E2A\u6761\u76EE");
       } catch (decodeError) {
         console.warn("[Stego] \u9690\u5199\u56FE\u7247\u89E3\u7801\u5931\u8D25\uFF08\u53EF\u80FD\u662F\u65E7\u683C\u5F0F\u6216\u5DF2\u635F\u574F\uFF09\uFF0C\u5C06\u4F7F\u7528 extension_settings \u4E2D\u7684\u6570\u636E\u91CD\u5EFA:", decodeError.message);
-        if (!extension_settings[extensionName].jiuguanStorage) {
-          extension_settings[extensionName].jiuguanStorage = {};
+        if (!imageMetadata.data) {
+          imageMetadata.data = {};
         }
-        const currentData = extension_settings[extensionName].jiuguanStorage;
+        const currentData = imageMetadata.data;
         if (currentData && Object.keys(currentData).length > 0) {
           console.log("[Stego] \u68C0\u6D4B\u5230\u73B0\u6709\u6570\u636E\uFF0C\u5C1D\u8BD5\u91CD\u5EFA\u9690\u5199\u56FE\u7247...");
           try {
@@ -6967,10 +6986,10 @@ async function initJiuguanStorage() {
       }
     } else {
       console.log("[Stego] \u9690\u5199\u56FE\u7247\u4E0D\u5B58\u5728\uFF0C\u68C0\u67E5\u662F\u5426\u9700\u8981\u521B\u5EFA...");
-      if (!extension_settings[extensionName].jiuguanStorage) {
-        extension_settings[extensionName].jiuguanStorage = {};
+      if (!imageMetadata.data) {
+        imageMetadata.data = {};
       }
-      const currentData = extension_settings[extensionName].jiuguanStorage;
+      const currentData = imageMetadata.data;
       if (currentData && Object.keys(currentData).length > 0) {
         console.log("[Stego] \u53D1\u73B0\u73B0\u6709\u6570\u636E\uFF0C\u521B\u5EFA\u9690\u5199\u56FE\u7247...");
         await createStegoImage();
@@ -6980,8 +6999,8 @@ async function initJiuguanStorage() {
     }
   } catch (error) {
     console.error("[Stego] \u521D\u59CB\u5316\u5931\u8D25:", error);
-    if (!extension_settings[extensionName].jiuguanStorage) {
-      extension_settings[extensionName].jiuguanStorage = {};
+    if (!imageMetadata.data) {
+      imageMetadata.data = {};
     }
     console.log("[Stego] \u4F7F\u7528\u73B0\u6709\u8BBE\u7F6E\u6570\u636E\u4F5C\u4E3A\u964D\u7EA7\u65B9\u6848");
   }
@@ -6993,7 +7012,7 @@ async function decodeStegoPayload(payload) {
   }
   return await new ImageSteganography().decode(payload);
 }
-async function fetchStegoImage() {
+async function fetchStegoImage(strict = false) {
   try {
     const imagePath = `user/images/${STEGO_FOLDER}/${STEGO_FILENAME}.png`;
     const response = await fetch(`/${imagePath}`, {
@@ -7003,15 +7022,18 @@ async function fetchStegoImage() {
     if (response.ok) {
       return await response.text();
     }
+    if (strict && response.status !== 404) throw new Error(`Legacy metadata unavailable (HTTP ${response.status}). Migration stopped.`);
     return null;
   } catch (error) {
+    if (strict) throw error;
     console.error("[Stego] \u83B7\u53D6\u56FE\u7247\u5931\u8D25:", error);
     return null;
   }
 }
 async function createStegoImage() {
+  if (imageMetadata.ready) return imageMetadata.flush();
   const stego = new ImageSteganography();
-  const currentData = extension_settings[extensionName].jiuguanStorage || {};
+  const currentData = imageMetadata.data || {};
   try {
     const imageBase64 = await stego.encode(currentData);
     await uploadStegoImage(imageBase64);
@@ -7022,9 +7044,10 @@ async function createStegoImage() {
   }
 }
 async function updateStegoImage(options = {}) {
+  if (imageMetadata.ready) return imageMetadata.flush();
   const stego = new ImageSteganography();
   try {
-    const currentData = extension_settings[extensionName].jiuguanStorage || {};
+    const currentData = imageMetadata.data || {};
     console.log("[Stego] \u51C6\u5907\u66F4\u65B0\u9690\u5199\u56FE\u7247\uFF0C\u6570\u636E\u6761\u76EE\u6570:", Object.keys(currentData).length);
     const imageBase64 = await stego.encode(currentData);
     await deleteStegoImage();
@@ -89972,6 +89995,7 @@ function onRestoreDefaultSettingsClick() {
             delete settings3[key];
           });
           Object.assign(settings3, defaults);
+          if (imageMetadata.ready) { delete settings3.jiuguanStorage; settings3.imageMetadataStorage = 'server-v1'; }
           saveSettingsDebounced45();
           try {
             await initJiuguanStorage();
@@ -90010,6 +90034,10 @@ function onImportSettingsClick() {
       reader.onload = async (e) => {
         try {
           const importedSettings = JSON.parse(e.target.result);
+          if (imageMetadata.ready) {
+            delete importedSettings.jiuguanStorage;
+            importedSettings.imageMetadataStorage = 'server-v1';
+          }
           Object.assign(extension_settings73[extensionName], importedSettings);
           saveSettingsDebounced45();
           try {
@@ -110377,6 +110405,7 @@ async function initUI({ check_update: check_update2 }) {
   if (!await loadAllTabsContent(tabContentContainer)) {
     return;
   }
+  mountStorageUI(imageMetadata);
   async function loadSettingsIntoUI() {
     settings2 = extension_settings113[extensionName];
     if (settings2.vibeJiuguanchucun === void 0) {
@@ -112357,7 +112386,15 @@ async function checkForUpdates2() {
     window.chatu8UpdateAvailable = false;
   }
 }
-main();
+window.addEventListener('beforeunload', event => {
+  if (imageMetadata.ready && imageMetadata.generation !== imageMetadata.savedGeneration) {
+    event.preventDefault(); event.returnValue = '';
+  }
+});
+main().catch(error => {
+  console.error('[Chatu8 storage] Startup stopped:', error);
+  window.toastr?.error(error.message, 'Chatu8 startup stopped');
+});
 function loadCSS(url) {
   const link = document.createElement("link");
   link.rel = "stylesheet";
@@ -112400,6 +112437,10 @@ async function main() {
     saveSettingsDebounced72();
   }
   extension_settings116[extensionName] = mergedSettings;
+  await imageMetadata.initialize(mergedSettings, async () => {
+    const payload = await fetchStegoImage(true);
+    return payload ? await decodeStegoPayload(payload) : {};
+  }, saveSettingsDebounced72);
   ensureInjectionTemplatesInit();
   installGlobalErrorHandler();
   initImageGenStatsListener();

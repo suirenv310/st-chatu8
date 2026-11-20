@@ -1,4 +1,14 @@
 <div id="ch-tab-main">
+    <div id="chatu8-image-storage" class="st-chatu8-settings-section">
+        <h3>Image metadata and optional R2 copies</h3>
+        <p data-storage-status></p>
+        <p>Metadata stays in your private server folder. R2 is OFF by default. Configure R2 credentials on the server before enabling it. Local files and existing image links are retained.</p>
+        <label><input type="checkbox" data-r2-toggle> Enable Cloudflare R2 for new image copies</label>
+        <p>Enabling R2 does not upload the existing library.</p>
+        <button type="button" data-r2-existing>Upload existing images to R2</button>
+        <button type="button" data-storage-flush>Save metadata now</button>
+        <button type="button" data-storage-export>Export image metadata / pending changes</button>
+    </div>
     <!-- 1. 核心设置 -->
     <div class="st-chatu8-settings-section">
         <h3><i class="fa-solid fa-sliders"></i> Core settings</h3>
