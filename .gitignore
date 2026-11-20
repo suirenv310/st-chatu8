@@ -1,0 +1,3 @@
+# Private runtime credentials and data must stay outside the extension checkout.
+**/r2-config.json
+.storage-data/

@@ -102,3 +102,19 @@ Tests use mocks and do not spend PixAI credits. Local tests do not establish liv
 provider behavior or full SillyTavern browser integration.
 
 The original README below remains available for upstream features and history.
+
+
+## Changes in patch v0.7.0 — private image metadata
+
+Moves `jiuguanStorage` into per-user server storage with verified migration,
+permanent legacy backups, ten rolling revision snapshots and offline rollback.
+Install the separate `plugins/chatu8-storage` server plugin before updating.
+All image references and existing provider configurations are retained.
+
+R2 is an optional additional mirror, OFF by default. Configuration alone does
+not enable uploads. New images and an explicitly requested existing-library
+copy are separate actions. Local files and paths remain authoritative.
+
+See [Vietnamese deployment, migration and rollback guide](STORAGE-MIGRATION.vi.md).
+No runtime credentials are included. Server data and keys belong outside this
+checkout. Validation uses local/mocked tests; VPS and real R2 remain unverified.
