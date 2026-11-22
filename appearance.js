@@ -1,4 +1,5 @@
-/* Appearance sources and character-preset extraction v0.3.3, 2026-11-06. AFPL v9. */
+/* Appearance sources and character-preset extraction v0.4.0, 2026-11-22. AFPL v9. */
+import { appearancePromptOptions, prepareAppearanceSources, renderImageKeywordReference, readOnlyPromptVariables } from './appearance-prompt.js';
 import { isSubjectTag, getPresetSubject, validateAppearanceDictionary, mergeCoreCharacterTraits } from './appearance-tags.js';
 export const APPEARANCE_FIELDS = [
   ['nameCN', 'Character name (original spelling)'], ['nameEN', 'Tag name / alias (original spelling allowed)'],
@@ -86,7 +87,7 @@ export function parseAppearanceResult(raw, fallbackName = '') {
     ? [...new Set(value.inferredTraits.filter(item => typeof item === 'string').map(cleanAppearanceTags).filter(item => item && present.has(item)))] : [];
   return data;
 }
-export function buildAppearanceRequest({ name, card, persona, lorebook, description }) {
+export function buildAppearanceRequest({ name, card, persona, lorebook, description }, imageKeywordMessages = []) {
   const sources = [['Character card', card], ['User persona', persona], ['Selected / triggered lorebook entries', lorebook], ['Pasted description (highest priority)', description]]
     .filter(([, value]) => text(value)).map(([label, value]) => `${label}:\n${text(value)}`).join('\n\n');
   if (!sources) throw new Error('No source text found. Select a source with data, or paste an appearance description.');
@@ -97,7 +98,8 @@ SUBJECT: set subjectTag to 1boy for one male character, 1girl for one female cha
 FIELD PLACEMENT: characterTraits MUST be the complete, always-applied identity block: the singular subject tag, hair color, hair length, hairstyle/texture, bangs/fringe, eye color, skin tone, build/body proportions and other stable defining traits. Example: "1boy, black_hair, short_hair, parted_bangs, blue_eyes, dark_skin, muscular". Never leave hair/eye/skin tags ONLY in facialFeatures or back fields: they must be in characterTraits. Do not repeat the same identity tags in multiple fields. facialFeatures/back fields are for ADDITIONAL angle-specific face/head anatomy after core identity is in characterTraits. Upper/lower body fields hold additional physical details, NEVER outfits. fullBodySFW means LOWER body/legs, not the full character. Natural ears/tail/horns and established scars/tattoos/freckles/moles remain valid physical features.
 MISSING DETAILS: if source text omits core traits (hair length/style, hair color, eye color, skin tone or figure/build), choose restrained, plausible defaults consistent with the character, setting and species. Put the resulting tags in the appropriate fields AND list each inferred tag in inferredTraits. Do not label or mark inferred tags inside the appearance fields themselves. Do not contradict explicit facts (e.g. bald/hairless, eyeless, fur/scales/nonhuman anatomy); omit inapplicable traits. Do not infer extra age, ethnicity, medical conditions, sexual anatomy, scars/tattoos or a different person. Unnecessary unknown details may stay blank.
 EXCLUDE COMPLETELY even if explicitly described in the source: ALL clothing, uniforms, underwear, swimwear, shoes, socks, hats, glasses, jewelry, accessories, hair ornaments, ribbons and wearable items; outfit colors/materials, sleeves/collars, clothing state, nudity tags, makeup, props, pose, expression and action. Never transfer them into any character field. Clothing belongs to separate outfit presets or the current scene, not this body preset. Do not sexualize. No style, artist names, quality boosters, scene/background tags, positive/negative boilerplate, LoRA or generation parameters.` },
-    { role: 'user', content: `Target character name: ${text(name) || '(identify the single character described)'}\n\n${sources}` }];
+    ...(imageKeywordMessages.length ? [{ role: 'user', content: `IMAGE-KEYWORD CONVERSION REFERENCE — from the active image_gen context preset. Reuse its prose-to-Danbooru vocabulary, character attribution and visual interpretation rules. This is a reference for converting the source data below, NOT a request to generate a scene. Its examples, clothing, character lists, tool schemas, image markers, output wrappers and generation actions do not define this extraction task. The body-only field placement, exclusions, source priorities and JSON schema in the system message remain authoritative. Never copy example traits into the target.\n${JSON.stringify(imageKeywordMessages, null, 2)}\nEND IMAGE-KEYWORD CONVERSION REFERENCE` }] : []),
+    { role: 'user', content: `Target character name: ${text(name) || '(identify the single character described)'}\n\n${sources}\n\nConvert only this target's supported stable body facts into the JSON character fields. Return exactly one JSON object, no image generation, scene tags, image markers or tool calls.` }];
 }
 export function saveAppearancePreset(settings, draft, { presetName, enable = false } = {}) {
   const data = parseAppearanceResult(JSON.stringify(draft));
@@ -122,7 +124,23 @@ export function saveAppearancePreset(settings, draft, { presetName, enable = fal
   return id;
 }
 
-export function initAppearanceUI({ getSettings, getContext, save, getLorebook, request, previewRequest, refresh, lookupTags }) {
+export async function prepareAppearanceRequest(sources, { getContext, getKeywordPrompt, useImagePrompt = true }) {
+  const context = getContext();
+  const resolved = prepareAppearanceSources(sources, context);
+  // Validate that a real selected source exists before preparing any inherited context.
+  buildAppearanceRequest(resolved);
+  let keywordMessages = [];
+  if (useImagePrompt) {
+    const triggerText = [resolved.name, resolved.description, resolved.card, resolved.persona, resolved.lorebook].filter(Boolean).join('\n');
+    keywordMessages = await getKeywordPrompt(triggerText);
+    if (!Array.isArray(keywordMessages) || !keywordMessages.length) throw new Error('No active image-keyword context prompt. Choose one in LLM settings, or turn off reuse for this extraction.');
+    keywordMessages = renderImageKeywordReference(keywordMessages, resolved, context);
+  }
+  if (sources.identity && contextIdentity(getContext()) !== sources.identity) throw new Error('The active chat or persona changed. Try again.');
+  return readOnlyPromptVariables(buildAppearanceRequest(resolved, keywordMessages), context);
+}
+
+export function initAppearanceUI({ getSettings, getContext, save, getLorebook, getKeywordPrompt, request, previewRequest, refresh, lookupTags }) {
   let observer;
   const mount = () => {
     const settings = getSettings();
@@ -153,8 +171,10 @@ export function initAppearanceUI({ getSettings, getContext, save, getLorebook, r
       <div><label><input type="checkbox" data-input-source="card" checked> Current character card</label>
       <label><input type="checkbox" data-input-source="persona"> Current user persona</label>
       <label><input type="checkbox" data-input-source="lorebook" checked> Selected / triggered lorebook entries (Send Data)</label></div>
+      <label><input type="checkbox" data-reuse-image-prompt> Reuse active image-keyword LLM context prompt (Send Data)</label>
+      <p>Uses the selected/triggered worldbook entries and the current image-keyword prompt's Danbooru conversion rules. Output remains a body-only Character Preset JSON; nothing is written to the chat. Edit the shared conversion prompt in LLM settings → Image generation → Context preset.</p>
       <label>Appearance description / overrides<textarea class="st-chatu8-textarea" data-description rows="4" placeholder="Paste a description in any language. Leave the other sources unchecked to use only this text."></textarea></label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button type="button" class="st-chatu8-btn" data-preview>Preview source text</button><button type="button" class="st-chatu8-btn primary" data-generate>Generate appearance tags</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0"><button type="button" class="st-chatu8-btn" data-preview>Preview sources + full prompt</button><button type="button" class="st-chatu8-btn primary" data-generate>Generate appearance tags</button></div>
       <p data-status role="status" aria-live="polite"></p><pre data-source-preview hidden style="white-space:pre-wrap;max-height:260px;overflow:auto"></pre>
       <div data-review hidden><p>Review / edit body traits before saving. Clothing is filtered again on save.</p><p data-inferred style="white-space:pre-wrap"></p>
       <p data-dictionary role="status" style="white-space:pre-wrap"></p>
@@ -167,6 +187,13 @@ export function initAppearanceUI({ getSettings, getContext, save, getLorebook, r
       <button type="button" class="st-chatu8-btn primary" data-save>Save new character preset</button></div>`;
     manager.prepend(section);
     const el = selector => section.querySelector(selector);
+    el('[data-reuse-image-prompt]').checked = appearancePromptOptions(settings).useImagePrompt;
+    el('[data-reuse-image-prompt]').onchange = () => {
+      const current = getSettings();
+      current.appearanceExtraction ||= {};
+      current.appearanceExtraction.useImagePrompt = el('[data-reuse-image-prompt]').checked;
+      save();
+    };
     el('[data-name]').value = getContext()?.groupId ? '' : (getContext()?.name2 || '');
     section.querySelectorAll('[data-input-source]').forEach(input => input.addEventListener('change', () => {
       const card = el('[data-input-source="card"]').checked, persona = el('[data-input-source="persona"]').checked;
@@ -192,7 +219,7 @@ export function initAppearanceUI({ getSettings, getContext, save, getLorebook, r
       const options = Object.fromEntries([...section.querySelectorAll('[data-input-source]')].map(input => [input.dataset.inputSource, input.checked]));
       const sources = await readAppearanceSources(getContext, options);
       const name = el('[data-name]').value.trim(), description = el('[data-description]').value.trim();
-      const lorebook = options.lorebook ? await getLorebook([name, description, sources.card, sources.persona].filter(Boolean)) : '';
+      const lorebook = options.lorebook ? await getLorebook([name, description, sources.card, sources.persona].filter(Boolean), { readOnly: true }) : '';
       if (contextIdentity(getContext()) !== sources.identity) throw new Error('The active chat or persona changed. Try again.');
       return { ...sources, name, description, lorebook };
     }
@@ -203,10 +230,13 @@ export function initAppearanceUI({ getSettings, getContext, save, getLorebook, r
       status(generate ? 'Reading sources and generating appearance tags…' : 'Reading sources…');
       try {
         const sources = await collect();
-        const messages = buildAppearanceRequest(sources);
-        el('[data-source-preview]').textContent = messages[1].content;
+        const messages = await prepareAppearanceRequest(sources, {
+          getContext, getKeywordPrompt,
+          useImagePrompt: el('[data-reuse-image-prompt]').checked,
+        });
+        el('[data-source-preview]').textContent = JSON.stringify(messages, null, 2);
         el('[data-source-preview]').hidden = false;
-        if (!generate) { status('Source preview ready. No LLM request sent.'); return; }
+        if (!generate) { previewRequest?.(messages); status('Full prompt preview ready. No LLM request sent and no preset saved.'); return; }
         previewRequest?.(messages);
         const response = await request(messages);
         if (response?.testMode) { status('LLM test mode: request preview only. No preset saved.'); return; }

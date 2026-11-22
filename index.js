@@ -1,3 +1,4 @@
+import { readOnlyPromptVariables } from "./appearance-prompt.js";
 import { ImageMetadata, mountStorageUI } from "./image-metadata.js";
 const imageMetadata = new ImageMetadata({
   request: async (route, body) => {
@@ -18989,19 +18990,19 @@ function setworldvar(name, value) {
 function clearWorldVars() {
   worldVars = {};
 }
-async function processWorldBooksWithTrigger(contextElements) {
-  const structuredData = await processWorldBooksWithTriggerStructured(contextElements);
+async function processWorldBooksWithTrigger(contextElements, options = {}) {
+  const structuredData = await processWorldBooksWithTriggerStructured(contextElements, options);
   let finalContent = structuredData.map((item) => {
     const content = item.entries.map((e) => e.content).filter((c) => c && c.trim()).join("\n\n");
     return `=== ${item.worldName} ===
 ${content}`;
   }).join("\n\n");
-  finalContent = processVariablePlaceholders(finalContent);
+  if (!options.readOnly) finalContent = processVariablePlaceholders(finalContent);
   return finalContent;
 }
-async function processWorldBooksWithTriggerStructured(contextElements) {
+async function processWorldBooksWithTriggerStructured(contextElements, options = {}) {
   try {
-    clearWorldVars();
+    if (!options.readOnly) clearWorldVars();
     const triggerText = contextElements.join("\n");
     const settings3 = extension_settings13[extensionName];
     const worldBookConfig = settings3?.worldBookConfig || {};
@@ -21677,7 +21678,7 @@ function getEffectiveConfigForRequestType(requestType) {
     context: contextProfile
   };
 }
-function buildPromptForRequestType(requestType, triggerText = "") {
+function buildPromptForRequestType(requestType, triggerText = "", options = {}) {
   const configs = extension_settings17[extensionName].llm_request_type_configs || {};
   const typeConfig = configs[requestType] || { context_profile: "\u9ED8\u8BA4" };
   const contextProfileName = typeConfig.context_profile || "\u9ED8\u8BA4";
@@ -21716,7 +21717,9 @@ function buildPromptForRequestType(requestType, triggerText = "") {
   const mergeOptions = getMergeOptionsForRequestType(requestType);
   const mergedMessages = mergeAdjacentMessages(messages, mergeOptions);
   const processedMessages = processRollPlaceholders(mergedMessages);
-  const finalMessages = processVariablePlaceholdersInMessages(processedMessages);
+  const finalMessages = options.readOnly
+    ? readOnlyPromptVariables(processedMessages, getContext4())
+    : processVariablePlaceholdersInMessages(processedMessages);
   return finalMessages;
 }
 function shouldApplyAiReplacement(requestType) {
@@ -112480,7 +112483,8 @@ initAppearanceUI({
   getSettings: () => extension_settings50[extensionName],
   getContext: getContext4,
   save: saveSettingsDebounced2,
-  getLorebook: (triggerText) => processWorldBooksWithTrigger(triggerText),
+  getLorebook: (triggerText, options) => processWorldBooksWithTrigger(triggerText, options),
+  getKeywordPrompt: (triggerText) => buildPromptForRequestType("image_gen", triggerText, { readOnly: true }),
   lookupTags: (tags) => lookupInstalledDanbooru({ openDatabase: () => dbs.openDB(), getVocabularies: () => dbs.getInstalledVocabularies() }, tags),
   request: async (messages) => {
     if (extension_settings50[extensionName]?.regexTestMode === true) return { testMode: true };

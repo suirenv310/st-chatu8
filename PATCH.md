@@ -118,3 +118,46 @@ copy are separate actions. Local files and paths remain authoritative.
 See [Vietnamese deployment, migration and rollback guide](STORAGE-MIGRATION.vi.md).
 No runtime credentials are included. Server data and keys belong outside this
 checkout. Validation uses local/mocked tests; VPS and real R2 remain unverified.
+
+
+## Changes in patch v0.7.1 — Send Data prompt reuse for Character Preset
+
+Character Manager → Appearance → Character Preset → Generate appearance tags
+can now reuse the active **Image generation** (`image_gen`) context preset's
+prose-to-Danbooru conversion rules, together with the worldbook entries selected
+in Send Data. The new “Reuse active image-keyword LLM context prompt” checkbox
+defaults to enabled; turn it off to use the independent body extraction prompt.
+Edit the shared conversion instructions in LLM settings → Image generation →
+Context preset. Enabled/keyword-triggered prompt entries are resolved for the
+current target on every preview/generation.
+
+The shared prompt is a conversion reference. The extraction JSON schema remains
+authoritative: hair/eye/skin/build identity stays in Character traits, additional
+body details go to their corresponding fields, and clothing/accessories are
+filtered. Other characters and example traits must not be copied to the target.
+The existing character-design API profile/connection handles this extraction;
+copying the image-keyword prompt does not switch providers or generate images.
+
+Use **Preview sources + full prompt** before generating to inspect the exact
+sources, inherited conversion reference and final JSON task. Preview sends no
+LLM request. Generation produces an editable draft, checked against the installed
+Danbooru dictionary; only **Save new character preset** persists a new preset,
+with a collision-safe name. Existing presets and saved context profiles remain
+unchanged. Missing active image-keyword context produces a clear error when
+reuse is enabled, rather than silently using unrelated instructions.
+
+The shared Send Data selector retains book/entry selection, force/disable,
+keyword and recursion behavior. Extraction reads it without clearing live world
+variables, and variable macros are simulated on private copies. Preview and
+extraction do not persist chat/global variable assignments from source entries
+or inherited prompt examples. Normal image generation keeps its existing path.
+No chat history is read for this body preset operation.
+
+This is an extension-side update; update the extension checkout to the branch
+containing this patch and reload the browser completely. Existing metadata/R2
+server plugin files do not need an update for this change.
+
+Validation adds nine tests for prompt reuse/switching, placeholders, source
+priorities/output boundaries, read-only macros, actual bundled prompt/worldbook
+selectors, conflict checks and safe preset saves. Live LLM output quality and
+the user's deployed SillyTavern session remain unverified.
